@@ -1,0 +1,398 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2cd2abfc-acd6-4626-91d7-c8b0099b8216",
+  "prevIds": [
+    "db676a38-4004-49e7-a466-a0a6787380fd"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "business_hours"
+      ],
+      "writes": [
+        "s|tbl|public.business_hours",
+        "n|tbl|public.business_hours",
+        "e|tbl|public.business_hours",
+        "n|rel|public.business_hours",
+        "n|type|public.business_hours",
+        "n|rel|public.business_hours_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_unique",
+      "statementTarget": [
+        "table",
+        "public",
+        "services"
+      ],
+      "writes": [
+        "s|uq|public.services.services_shop_id_key",
+        "n|uq|public.services.services_shop_id_key",
+        "e|uq|public.services.services_shop_id_key",
+        "n|con|public.services.services_shop_id_key",
+        "n|rel|public.services_shop_id_key"
+      ],
+      "reads": [
+        "n|tbl|public.services",
+        "n|sch|public",
+        "e|col|public.services.shop_id"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.services.shop_id"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "services",
+        "duration_minutes"
+      ],
+      "writes": [
+        "s|col|public.services.duration_minutes",
+        "n|col|public.services.duration_minutes",
+        "e|col|public.services.duration_minutes"
+      ],
+      "reads": [
+        "n|tbl|public.services",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "services",
+        "duration"
+      ],
+      "writes": [
+        "s|col|public.services.duration",
+        "n|col|public.services.duration",
+        "e|col|public.services.duration"
+      ],
+      "reads": [
+        "n|tbl|public.services",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "services",
+        "shop_id"
+      ],
+      "writes": [
+        "s|colprop|public.services.shop_id.type",
+        "s|colprop|public.services.shop_id.default"
+      ],
+      "reads": [
+        "n|tbl|public.services",
+        "n|sch|public",
+        "n|col|public.services.shop_id"
+      ],
+      "sqlHash": "69397c6f8c5ed5e3"
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "business_hours",
+        "business_hours_shop_day_idx"
+      ],
+      "writes": [
+        "s|idx|public.business_hours_shop_day_idx",
+        "n|idx|public.business_hours_shop_day_idx",
+        "e|idx|public.business_hours_shop_day_idx",
+        "n|rel|public.business_hours_shop_day_idx"
+      ],
+      "reads": [
+        "n|tbl|public.business_hours",
+        "n|sch|public",
+        "n|col|public.business_hours.shop_id",
+        "n|col|public.business_hours.day_of_week"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "business_hours"
+      ],
+      "writes": [
+        "s|fk|public.business_hours.business_hours_shop_id_shops_id_fkey",
+        "n|fk|public.business_hours.business_hours_shop_id_shops_id_fkey",
+        "e|fk|public.business_hours.business_hours_shop_id_shops_id_fkey",
+        "n|con|public.business_hours.business_hours_shop_id_shops_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.business_hours",
+        "n|sch|public",
+        "n|tbl|public.shops",
+        "n|sch|public",
+        "n|col|public.business_hours.shop_id",
+        "n|col|public.shops.id",
+        "e|uniqueness|public.shops.id"
+      ]
+    },
+    {
+      "statementType": "alter_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "services"
+      ],
+      "writes": [
+        "s|ck|public.services.services_duration_positive"
+      ],
+      "reads": [
+        "n|tbl|public.services",
+        "n|sch|public",
+        "n|col|public.services.duration_minutes"
+      ],
+      "sqlHash": "c8d811d4eed0110e"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "business_hours",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "shop_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "day_of_week",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "open_time",
+        "type": "time",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "close_time",
+        "type": "time",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "is_closed",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "services",
+        "name": "duration_minutes",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "business_hours_shop_day_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "shop_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "day_of_week",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "business_hours_shop_id_shops_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "shop_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "shops",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "business_hours_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "business_hours_valid_key",
+        "value": "\"\"day_of_week\" BETWEEN 0 AND 6",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "business_hours",
+        "name": "business_hours_valid_time",
+        "value": "\"is_closed\" = true OR (\n            \"open_time\" IS NOT NULL\n            AND \"close_time\" IS NOT NULL\n            AND \"open_time\" < \"close_time\"\n        )",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"services\",\"duration\"]"
+    },
+    {
+      "op": "drop",
+      "key": "uniques\u0000[\"public\",\"services\",\"services_shop_id_key\"]"
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"services\",\"shop_id\"]",
+      "set": {
+        "type": "uuid"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "checks\u0000[\"public\",\"services\",\"services_duration_positive\"]",
+      "set": {
+        "value": "\"duration_minutes\" > 0"
+      }
+    }
+  ]
+}

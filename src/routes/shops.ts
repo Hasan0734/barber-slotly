@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { validate } from "../lib/validate.js";
 import { authGuard } from "../middleware/auth-guard.js";
 import db from "../db/index.js";
-import { shops } from "../db/schema/shops.js";
+import { shops } from "../db/schemas/shops.js";
 import { eq, or } from "drizzle-orm";
 import { shopSchema, updateShopSchema } from "../schemas/shop.js";
 import { HTTPException } from "hono/http-exception";
