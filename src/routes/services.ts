@@ -18,7 +18,7 @@ const selectedProperty = {
     name: services.name,
     description: services.description,
     price: services.price,
-    duration: services.duration,
+    durationMinutes: services.durationMinutes,
     isActive: services.isActive,
     createdAt: services.createdAt,
     updatedAt: services.updatedAt
