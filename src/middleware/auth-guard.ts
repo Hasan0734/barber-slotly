@@ -22,6 +22,5 @@ export const authGuard = createMiddleware<AuthVariables>(async (c, next) => {
     c.set("user", session.user);
     c.set("session", session);
 
-
     await next();
 })

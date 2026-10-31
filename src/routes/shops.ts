@@ -1,137 +1,90 @@
 import { Hono } from "hono";
 import { validate } from "../lib/validate.js";
-import { z } from 'zod';
 import { authGuard } from "../middleware/auth-guard.js";
 import db from "../db/index.js";
-import { shops } from "../db/schema/shop.js";
+import { shops } from "../db/schema/shops.js";
 import { eq, or } from "drizzle-orm";
-import { slugify } from "../lib/utils.js";
-
-
-const baseShopSchema = z.object({
-    name: z.string().min(5).max(120),
-    description: z.string(),
-    slug: z.string().min(5).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-        error: "Slug must contain only lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen"
-    }).optional(),
-    address: z.string(),
-    phone: z.string().max(20),
-    timezone: z.string().min(5).max(20)
-})
-
-const shopSchema = baseShopSchema.transform((data) => {
-    if (!data.slug) {
-        data.slug = slugify(data.name);
-    }
-    return data as Required<typeof data>;
-})
-const updateShopSchema = baseShopSchema.partial()
+import { shopSchema, updateShopSchema } from "../schemas/shop.js";
+import { HTTPException } from "hono/http-exception";
 
 const app = new Hono();
 
 
 // shop lists
 app.get('/', async (c) => {
-    try {
-        const res = await db.select().from(shops).limit(10);
-        return c.json({ data: res }, 200)
+    const res = await db.select().from(shops).limit(10);
+    return c.json({ data: res, success: true }, 200)
 
-    } catch (err) {
-        console.error((err as Error).message)
-    }
+
 })
 
 app.post('/', authGuard, validate('json', shopSchema), async (c) => {
 
-    try {
-        const { name, description, slug, address, phone, timezone } = c.req.valid('json');
-        const user = c.get("user");
+    const data = c.req.valid('json');
+    const user = c.get("user");
+    const existingRecords = await db.select().from(shops).where(
+        or(
+            eq(shops.slug, data.slug),
+            eq(shops.ownerId, user.id)
+        )
+    );
 
-        const existingRecords = await db.select().from(shops).where(
-            or(
-                eq(shops.slug, slug),
-                eq(shops.ownerId, user.id)
-            )
-        );
-
-        if (existingRecords.length > 0) {
-            const hasSameOwner = existingRecords.some(shop => shop.ownerId === user.id);
-            if (hasSameOwner) {
-                return c.json({ message: "You have already created shop" }, 409);
-            }
-
-            const hasSameSlug = existingRecords.some(shop => shop.slug === slug);
-            if (hasSameSlug) {
-                return c.json({ message: `This slug ${slug} is already taken` }, 400)
-            }
+    if (existingRecords.length > 0) {
+        const hasSameOwner = existingRecords.some(shop => shop.ownerId === user.id);
+        if (hasSameOwner) {
+            throw new HTTPException(409, { message: "You have already created shop" })
         }
 
-        await db.insert(shops).values({ ownerId: user.id, name, description, slug, address, phone, timezone });
-
-
-        return c.json({ message: "Shop successfully created" }, 201)
-    } catch (error: unknown) {
-        console.error((error as Error).message)
+        const hasSameSlug = existingRecords.some(shop => shop.slug === data.slug);
+        if (hasSameSlug) {
+            throw new HTTPException(400, { message: `This slug ${data.slug} is already taken` })
+        }
     }
+
+    await db.insert(shops).values({ ownerId: user.id, ...data });
+    return c.json({ message: "Shop successfully created", success: true }, 201)
+
 });
 
 // get shop profile by owner
 app.get('/me', authGuard, async (c) => {
-    try {
-        const user = c.get('user')
-        const [shop] = await db.select().from(shops).where(eq(shops.ownerId, user.id)).limit(1);
-
-        if (!shop) {
-            return c.json({ message: `Shop not found. Create shop first.`, success: false }, 404);
-        }
-
-        return c.json(shop, 200)
-    } catch (err) {
-        console.error((err as Error).message)
+    const user = c.get('user')
+    const [shop] = await db.select().from(shops).where(eq(shops.ownerId, user.id)).limit(1);
+    if (!shop) {
+        throw new HTTPException(404, { message: "You don't have any shop" })
     }
+    return c.json({ data: shop, success: true }, 200)
 });
 
 // update shop by owner 
 app.patch('/me', authGuard, validate('json', updateShopSchema), async (c) => {
-    try {
-        const body = c.req.valid('json');
-        const user = c.get('user');
+    const body = c.req.valid('json');
+    const user = c.get('user');
 
-        const res = await db.update(shops).set(body).where(eq(shops.ownerId, user.id));
-        if (!res.rowCount) {
-            return c.json({ message: `You don't have any shop`, success: false }, 404)
-        }
-        return c.json({ message: "Shop successfully updated.", success: true }, 201)
-    } catch (err) {
-        console.error((err as Error).message)
+    const res = await db.update(shops).set(body).where(eq(shops.ownerId, user.id));
+    if (!res.rowCount) {
+        throw new HTTPException(404, { message: "You don't have any shop" })
     }
+    return c.json({ message: "Shop successfully updated.", success: true }, 201)
 })
 
 // delete shp by owner
 app.delete('/me', authGuard, async (c) => {
-    try {
-        const user = c.get("user")
-        const res = await db.delete(shops).where(eq(shops.ownerId, user.id));
+    const user = c.get("user")
+    const res = await db.delete(shops).where(eq(shops.ownerId, user.id));
 
-        if (!res.rowCount) {
-            return c.json({ message: "You don't have any shop" }, 404)
-        }
-        return c.json({ message: "Shop deleted successfully ", success: true }, 200)
-    } catch (err) {
-        console.error((err as Error).message)
+    if (!res.rowCount) {
+        throw new HTTPException(404, { message: "You don't have any shop" })
     }
+    return c.json({ message: "Shop deleted successfully ", success: true }, 200)
 })
 
 // get shop by slug
 app.get('/:slug', async (c) => {
-    try {
-        const slug = c.req.param("slug")
-        const [shop] = await db.select().from(shops).where(eq(shops.slug, slug)).limit(1);
+    const slug = c.req.param("slug")
+    const [shop] = await db.select().from(shops).where(eq(shops.slug, slug)).limit(1);
+    return c.json({ data: shop, success: true }, 200)
 
-        return c.json(shop, 200)
-    } catch (err) {
-        console.error((err as Error).message)
-    }
 })
 
 

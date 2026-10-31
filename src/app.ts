@@ -4,9 +4,11 @@ import { logger } from 'hono/logger';
 import { requestId } from 'hono/request-id';
 import { auth } from './auth.js';
 import { HTTPException } from 'hono/http-exception';
-import shops from './routes/shops.js'
 import { timing } from './middleware/timing.js';
 import { secureHeaders } from 'hono/secure-headers';
+import shops from './routes/shops.js'
+import services from './routes/services.js'
+
 
 const app = new Hono();
 
@@ -25,8 +27,8 @@ const api = new Hono().basePath('/api');
 
 app.all('/api/auth/*', (c) => auth.handler(c.req.raw));
 
-api.route('/shops', shops)
-
+api.route('/shops', shops);
+api.route('/services', services)
 
 
 
@@ -37,11 +39,11 @@ app.get('/', (c) => {
 })
 
 
-// app.notFound((c) => {
-//     return c.json(
-//         { error: { message: `Not found: ${c.req.path}`, requestId: c.get('requestId') } }
-//     )
-// });
+app.notFound((c) => {
+    return c.json(
+        { error: { message: `Not found: ${c.req.path}`, requestId: c.get('requestId') } }
+    )
+});
 
 app.onError(async (err, c) => {
 
