@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { validate } from "../lib/validate.js";
-import { set, z } from 'zod';
+import { z } from 'zod';
 import { authGuard } from "../middleware/auth-guard.js";
 import db from "../db/index.js";
 import { shops } from "../db/schema/shop.js";
@@ -8,7 +8,7 @@ import { eq, or } from "drizzle-orm";
 import { slugify } from "../lib/utils.js";
 
 
-const shopSchema = z.object({
+const baseShopSchema = z.object({
     name: z.string().min(5).max(120),
     description: z.string(),
     slug: z.string().min(5).max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
@@ -17,16 +17,20 @@ const shopSchema = z.object({
     address: z.string(),
     phone: z.string().max(20),
     timezone: z.string().min(5).max(20)
-}).transform((data) => {
+})
+
+const shopSchema = baseShopSchema.transform((data) => {
     if (!data.slug) {
         data.slug = slugify(data.name);
     }
     return data as Required<typeof data>;
 })
+const updateShopSchema = baseShopSchema.partial()
 
 const app = new Hono();
 
 
+// shop lists
 app.get('/', async (c) => {
     try {
         const res = await db.select().from(shops).limit(10);
@@ -71,6 +75,7 @@ app.post('/', authGuard, validate('json', shopSchema), async (c) => {
     }
 });
 
+// get shop profile by owner
 app.get('/me', authGuard, async (c) => {
     try {
         const user = c.get('user')
@@ -86,23 +91,38 @@ app.get('/me', authGuard, async (c) => {
     }
 });
 
-app.patch('/me', authGuard, validate('json', shopSchema), async (c) => {
+// update shop by owner 
+app.patch('/me', authGuard, validate('json', updateShopSchema), async (c) => {
     try {
         const body = c.req.valid('json');
         const user = c.get('user');
-        const [shop] = await db.select().from(shops).where(eq(shops.ownerId, user.id)).limit(1);
 
-        if (!shop) {
-            return c.json({ message: `Shop not found. Create shop first.`, success: false }, 404)
+        const res = await db.update(shops).set(body).where(eq(shops.ownerId, user.id));
+        if (!res.rowCount) {
+            return c.json({ message: `You don't have any shop`, success: false }, 404)
         }
-
-        await db.update(shops).set(body).where(eq(shops.ownerId, user.id));
         return c.json({ message: "Shop successfully updated.", success: true }, 201)
     } catch (err) {
         console.error((err as Error).message)
     }
 })
 
+// delete shp by owner
+app.delete('/me', authGuard, async (c) => {
+    try {
+        const user = c.get("user")
+        const res = await db.delete(shops).where(eq(shops.ownerId, user.id));
+
+        if (!res.rowCount) {
+            return c.json({ message: "You don't have any shop" }, 404)
+        }
+        return c.json({ message: "Shop deleted successfully ", success: true }, 200)
+    } catch (err) {
+        console.error((err as Error).message)
+    }
+})
+
+// get shop by slug
 app.get('/:slug', async (c) => {
     try {
         const slug = c.req.param("slug")
@@ -114,7 +134,5 @@ app.get('/:slug', async (c) => {
     }
 })
 
-
-app.post()
 
 export default app;
