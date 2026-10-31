@@ -8,7 +8,9 @@ import { timing } from './middleware/timing.js';
 import { secureHeaders } from 'hono/secure-headers';
 import shops from './routes/shops.js'
 import services from './routes/services.js'
-import businessHours from './routes/businessHours.js'
+import businessHours from './routes/businessHours.js';
+import availability from './routes/availability.js';
+import appointments from './routes/appointments.js'
 
 
 const app = new Hono();
@@ -30,7 +32,9 @@ app.all('/api/auth/*', (c) => auth.handler(c.req.raw));
 
 api.route('/shops', shops);
 api.route('/services', services);
-api.route('/business-hours', businessHours)
+api.route('/business-hours', businessHours);
+api.route('/availability', availability);
+api.route('/appointments', appointments)
 
 
 

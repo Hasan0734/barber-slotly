@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import db from "../db/index.js";
-import { businessHours } from "../db/schemas/business-hours.js";
+import { businessHours } from "../db/schema/business-hours.js";
 import { authGuard } from "../middleware/auth-guard.js";
-import { shops } from "../db/schemas/shops.js";
+import { shops } from "../db/schema/shops.js";
 import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { validate } from "../lib/validate.js";

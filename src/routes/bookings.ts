@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 
-const hono= new Hono();
+const app = new Hono();
 
 
-export default hono;
+export default app;
