@@ -47,7 +47,9 @@ export const appointments = pgTable("appointments", {
     updatedAt: timestamp("updated_at", {
         withTimezone: true,
         mode: "date"
-    }).defaultNow().notNull()
+    }).defaultNow()
+        .notNull()
+        .$onUpdate(() => new Date())
 
 
 }, (table) => [

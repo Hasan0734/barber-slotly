@@ -10,13 +10,22 @@ export const services = pgTable('services', {
         .references(() => shops.id, {
             onDelete: "cascade",
         }),
-    name: varchar('name', { length: 120 }).notNull(),
+    name: varchar('name', { length: 120 })
+        .notNull(),
     description: text("description"),
     price: integer('price').notNull(),
-    durationMinutes: integer('duration_minutes').notNull(),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull()
+    durationMinutes: integer('duration_minutes')
+        .notNull(),
+    isActive: boolean("is_active")
+        .notNull()
+        .default(true),
+    createdAt: timestamp('created_at')
+        .defaultNow()
+        .notNull(),
+    updatedAt: timestamp('updated_at')
+        .defaultNow()
+        .notNull()
+        .$onUpdate(() => new Date())
 }, (table) => [
     index("services_shop_id_idx").on(table.shopId),
     index("services_shop_active_idx").on(table.shopId, table.isActive),
