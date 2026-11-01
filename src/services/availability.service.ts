@@ -15,15 +15,6 @@ function timeToMinutes(time: string): number {
     return hour * 60 + minute;
 }
 
-
-function getNextDate(date: string) {
-    const [year, month, day] = date.split("-").map(Number);
-
-    return new Date(Date.UTC(year, month - 1, day + 1))
-        .toISOString()
-        .slice(0, 10);
-}
-
 type AvailabilityInput = {
     slug: string;
     serviceId: string;
@@ -171,3 +162,4 @@ export async function getAvailableSlots({
     return availableSlots;
 
 }
+

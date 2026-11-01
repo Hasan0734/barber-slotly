@@ -11,6 +11,7 @@ import { appointments } from "../db/schema/appointments.js";
 import { services } from "../db/schema/services.js";
 import { availabilityQuerySchema } from "../schemas/availability.js";
 import { getAvailableSlots } from "../services/availability.service.js";
+import { createAppointment } from "../services/appointment.service.js";
 
 const app = new Hono();
 
@@ -90,73 +91,15 @@ app.post('/:slug/appointments', validate('json', createAppointmentSchema), async
     const body = c.req.valid('json');
     const shopSlug = c.req.param('slug');
 
-    // 1. Find shop
-    const [shop] = await db.select()
-        .from(shops)
-        .where(
-            eq(shops.slug, shopSlug)
-        ).limit(1);
-
-    if (!shop) {
-        throw new HTTPException(404, { message: "Shop not found" })
-    }
-
-    // 2. Find service belonging to this shop
-    const [service] = await db.select().from(services)
-        .where(
-            and(
-                eq(services.id, body.serviceId),
-                eq(services.shopId, shop.id),
-                eq(services.isActive, true)
-            )
-        );
-
-    if (!service) {
-        throw new HTTPException(404, { message: "Service not found or unavailable" })
-    }
-
-    // 3. Convert actual date startAt and canculate endAt
-    const startAt = new Date(body.startAt);
-
-    if (startAt <= new Date()) {
-        throw new HTTPException(400, { message: "Appointment must be in the future" })
-    }
-    const endAt = new Date(
-        startAt.getTime() + (service.durationMinutes * 60 * 1000)
-    )
-
-    // 4. Prepare appointment data
-    const data = {
-        shopId: shop.id,
-        serviceId: service.id,
-
-        customerName: body.customerName,
-        customerPhone: body.customerPhone,
-        customerEmail: body.customerEmail ?? null,
-        customerNote: body.customerNote ?? null,
-
-        serviceName: service.name,
-        servicePrice: service.price,
-        serviceDuration: service.durationMinutes,
-
-        startAt,
-        endAt
-    };
-
-    // 6. Create appointment
-    const [appointment] = await db.insert(appointments)
-        .values(data)
-        .returning();
+    const appointment = await createAppointment({
+        ...body,
+        shopSlug
+    })
 
     return c.json({
         success: true,
         message: "Appointment created successfully",
-        data: {
-            ...appointment,
-            shopName: shop.name,
-            shopPhone: shop.phone,
-            shopAddress: shop.address
-        }
+        data: appointment
     }, 201)
 })
 
