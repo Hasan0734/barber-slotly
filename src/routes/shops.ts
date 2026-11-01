@@ -9,6 +9,8 @@ import { HTTPException } from "hono/http-exception";
 import { createAppointmentSchema } from "../schemas/appointment.js";
 import { appointments } from "../db/schema/appointments.js";
 import { services } from "../db/schema/services.js";
+import { availabilityQuerySchema } from "../schemas/availability.js";
+import { getAvailableSlots } from "../services/availability.service.js";
 
 const app = new Hono();
 
@@ -158,10 +160,32 @@ app.post('/:slug/appointments', validate('json', createAppointmentSchema), async
     }, 201)
 })
 
+// check avaibility
+app.get("/:slug/availability", validate('query', availabilityQuerySchema), async (c) => {
+
+    const { serviceId, date } = c.req.valid('query');
+    const slug = c.req.param('slug');
+
+    const slots = await getAvailableSlots({
+        slug, serviceId, date
+    })
+
+    return c.json({
+        success: true,
+        data: {
+            date,
+            avialableSlots: slots
+        }
+    })
+})
+
 // get shop by slug
 app.get('/:slug', async (c) => {
     const slug = c.req.param("slug")
     const [shop] = await db.select().from(shops).where(eq(shops.slug, slug)).limit(1);
+    if (!shop) {
+        throw new HTTPException(404, { message: "Shop not found" })
+    }
     return c.json({ data: shop, success: true }, 200)
 
 })
