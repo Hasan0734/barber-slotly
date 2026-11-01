@@ -11,15 +11,8 @@ import { appointments } from "../db/schema/appointments.js";
 const SLOT_INTERVAL_MINUTES = 15;
 
 function timeToMinutes(time: string): number {
-    const [hour, minutes] = time.split(":").map(Number);
-    return hour * 60 + minutes;
-}
-
-function minutesToTime(minutes: number): string {
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-
-    return `${String(hours).padStart(2, "0")}:${String(remainingMinutes).padStart(2, "0")}`
+    const [hour, minute] = time.split(":").map(Number);
+    return hour * 60 + minute;
 }
 
 
@@ -54,6 +47,8 @@ export async function getAvailableSlots({
         })
     }
 
+    const timezone = shop.timezone || "Asia/Dhaka";
+
     const [service] = await db.select({
         id: services.id,
         durationMinutes: services.durationMinutes
@@ -73,7 +68,8 @@ export async function getAvailableSlots({
         })
     }
 
-    const dayOfWeek = new Date(`${date}T12:00:00.000Z`).getUTCDay();
+    const localDate = new Date(`${date}T12:00:00.000Z`);
+    const dayOfWeek = localDate.getUTCDay();
 
     const [hours] = await db
         .select()
@@ -90,18 +86,17 @@ export async function getAvailableSlots({
         return [];
     }
 
-    const openingMinutes = timeToMinutes(hours.openTime);
-    const closingMinutes = timeToMinutes(hours.closeTime);
+    const openTime = hours.openTime.slice(0, 5);
+    const closeTime = hours.closeTime.slice(0, 5);
 
+    const [year, month, day] = date.split('-').map(Number);
 
-    const dayStart = fromZonedTime(
-        `${date}T00:00:00`,
-        shop.timezone
-    );
+    const nextDate = new Date(
+        Date.UTC(year, month - 1, day + 1)
+    ).toISOString().slice(0, 10)
 
-    const dayEnd = fromZonedTime(
-        `${getNextDate(date)}T00:00:00`,
-        shop.timezone);
+    const dayStart = fromZonedTime(`${date}T00:00:00`, timezone);
+    const dayEnd = fromZonedTime(`${nextDate}T00:00:00`, timezone);
 
     const existingAppointments = await db
         .select({
@@ -121,28 +116,32 @@ export async function getAvailableSlots({
             )
         );
 
+    const openingMinutes = timeToMinutes(openTime);
+    const closingMinutes = timeToMinutes(closeTime);
+
     const availableSlots = [];
     const now = new Date();
 
-    for (let start = openingMinutes; start + service.durationMinutes <= closingMinutes; start += SLOT_INTERVAL_MINUTES) {
-        const startTime = minutesToTime(start);
+    for (let startMinutes = openingMinutes; startMinutes + service.durationMinutes <= closingMinutes; startMinutes += SLOT_INTERVAL_MINUTES) {
 
-        const startAt = fromZonedTime(`${date}T${startTime}:00`, shop.timezone);
-        const endAt = new Date(startAt.getTime() + service.durationMinutes * 60 * 1000);
+        const hour = Math.floor(startMinutes / 60);
+        const minute = startMinutes % 60;
 
-        if (startAt <= now) {
-            continue;
-        }
+        const localStartTime =
+            `${String(hour).padStart(2, "0")}:` +
+            `${String(minute).padStart(2, "0")}`;
 
-        if (formatInTimeZone(endAt, shop.timezone, "yyyy-MM-dd") !== date) {
-            continue;
-        }
+        const startAt = fromZonedTime(
+            `${date}T${localStartTime}:00`,
+            timezone,
+        );
 
-        const endTime = formatInTimeZone(endAt, shop.timezone, 'HH:mm');
+        const endAt = new Date(
+            startAt.getTime() +
+            service.durationMinutes * 60 * 1000,
+        );
 
-        if (timeToMinutes(endTime) > closingMinutes) {
-            continue;
-        }
+        if (startAt <= now) continue;
 
         const hasConflict = existingAppointments.some((appointment) => {
             return (
@@ -150,19 +149,21 @@ export async function getAvailableSlots({
             )
         })
 
-        if (hasConflict) {
-            continue;
-        }
+        if (hasConflict) continue;
 
         availableSlots.push({
             startAt: startAt.toISOString(),
             endAt: endAt.toISOString(),
-            startTime: formatInTimeZone(
+            localStartTime: formatInTimeZone(
                 startAt,
-                shop.timezone,
+                timezone,
                 "HH:mm"
             ),
-            endTime
+            localEndTime: formatInTimeZone(
+                endAt,
+                timezone,
+                "HH:mm"
+            )
         })
 
     }
