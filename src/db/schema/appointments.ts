@@ -11,6 +11,13 @@ export const appointmentStatusEnum = pgEnum("appointment_status", [
     "no_show"
 ])
 
+export const paymentMethodEnum = pgEnum("payment_method", ["online", "pay_at_shop"
+])
+
+export const paymentStatusEnum = pgEnum("appointment_payment_status", [
+    "unpaid", "pending", "paid", "failed", "refunded"
+])
+
 
 export const appointments = pgTable("appointments", {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -26,7 +33,7 @@ export const appointments = pgTable("appointments", {
     // Service snapshot
     serviceName: varchar("service_name", {
         length: 150
-    }),
+    }).notNull(),
     servicePrice: integer("service_price").notNull(),
     serviceDuration: integer("service_duration").notNull(),
 
@@ -40,6 +47,15 @@ export const appointments = pgTable("appointments", {
         mode: 'date'
     }).notNull(),
     status: appointmentStatusEnum().notNull().default('pending'),
+
+    //payment
+    paymentMethod: paymentMethodEnum().notNull().default('pay_at_shop'),
+    paymentStatus: paymentStatusEnum().notNull().default("unpaid"),
+
+    reservationExpiresAt: timestamp("reservation_expires_at", {
+        withTimezone: true,
+        mode: "date"
+    }),
     createdAt: timestamp("created_at", {
         withTimezone: true,
         mode: 'date'

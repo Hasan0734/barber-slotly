@@ -32,6 +32,9 @@ importers:
       postgres:
         specifier: ^4.0.0
         version: 4.0.0
+      stripe:
+        specifier: ^23.1.0
+        version: 23.1.0(@types/node@26.6.6)
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -766,6 +769,15 @@ packages:
     resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
     engines: {node: '>= 10.x'}
 
+  stripe@23.1.0:
+    resolution: {integrity: sha512-fVUfMSfTPoukfoV//MUKAx2+YxyKmYaYtnAL9VkfnHfaPNQylFdWZMD+zgUFerI8rjbaiER8Vzj2XEUQ2AhAsQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@types/node': '>=20'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   tsx@4.23.15:
     resolution: {integrity: sha512-Yiex1Ovn8z2xPpOWckIiysV1SSyRMY9BkLF++q0yKiDxCqRhosKfMg3janKkiLBwZ5c/YryloKwGZcrEmtwxKw==}
     engines: {node: '>=18.0.0'}
@@ -1149,6 +1161,10 @@ snapshots:
   set-cookie-parser@3.2.1: {}
 
   split2@4.2.0: {}
+
+  stripe@23.1.0(@types/node@26.6.6):
+    optionalDependencies:
+      '@types/node': 26.6.6
 
   tsx@4.23.15:
     dependencies:

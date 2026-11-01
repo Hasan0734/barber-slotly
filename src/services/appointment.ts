@@ -3,7 +3,7 @@ import db from "../db/index.js";
 import { shops } from "../db/schema/shops.js";
 import { HTTPException } from "hono/http-exception";
 import { services } from "../db/schema/services.js";
-import { getAvailableSlots } from "./availability.service.js";
+import { getAvailableSlots } from "./availability.js";
 import { appointments } from "../db/schema/appointments.js";
 
 type CreateAppointmentParams = {

@@ -10,7 +10,9 @@ import shops from './routes/shops.js'
 import services from './routes/services.js'
 import businessHours from './routes/businessHours.js';
 import availability from './routes/availability.js';
-import appointments from './routes/appointments.js'
+import appointments from './routes/appointments.js';
+import payments from './routes/payments.js';
+import webhooks from './routes/webhooks.js'
 
 
 const app = new Hono();
@@ -34,7 +36,10 @@ api.route('/shops', shops);
 api.route('/services', services);
 api.route('/business-hours', businessHours);
 api.route('/availability', availability);
-api.route('/appointments', appointments)
+api.route('/appointments', appointments);
+api.route('/payments', payments);
+api.route('/webhooks/stripe', webhooks);
+
 
 
 
@@ -48,7 +53,7 @@ app.get('/', (c) => {
 app.notFound((c) => {
     return c.json(
         { error: { message: `Not found: ${c.req.path}`, requestId: c.get('requestId') } }
-    )
+        , 404)
 });
 
 app.onError(async (err, c) => {

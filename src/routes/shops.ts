@@ -10,8 +10,11 @@ import { createAppointmentSchema } from "../schemas/appointment.js";
 import { appointments } from "../db/schema/appointments.js";
 import { services } from "../db/schema/services.js";
 import { availabilityQuerySchema } from "../schemas/availability.js";
-import { getAvailableSlots } from "../services/availability.service.js";
-import { createAppointment } from "../services/appointment.service.js";
+import { getAvailableSlots } from "../services/availability.js";
+import { createAppointment } from "../services/appointment.js";
+import { createPayment } from "../services/payment.js";
+import { createCheckoutSession } from "../stripe.js";
+import { payments } from "../db/schema/payments.js";
 
 const app = new Hono();
 
@@ -96,10 +99,38 @@ app.post('/:slug/appointments', validate('json', createAppointmentSchema), async
         shopSlug
     })
 
+    const payment = await createPayment({
+        appointmentId: appointment.id,
+        servicePrice: appointment.servicePrice
+    });
+
+
+    if (!appointment || !payment) {
+        throw new HTTPException(400, { message: "Something went wrong" })
+    }
+
+    const session = await createCheckoutSession({
+        appointmentId: appointment.id,
+        serviceName: appointment.serviceName,
+        servicePrice: appointment.servicePrice,
+        paymentId: payment.id
+    });
+
+
+    if (!session) {
+        throw new HTTPException(400, { message: "Payment failed" })
+    }
+
+    await db.update(payments)
+        .set({ providerSessionId: session.id })
+        .where(eq(payments.id, payment.id))
+
+
     return c.json({
         success: true,
         message: "Appointment created successfully",
-        data: appointment
+        data: appointment,
+        checkoutUrl: session.url
     }, 201)
 })
 

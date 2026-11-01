@@ -7,7 +7,7 @@ import { and, asc, count, desc, eq, getTableColumns, ilike } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { validate } from "../lib/validate.js";
 import { appointmentQuerySchema, updateAppointmentStatusSchema, updateAppointSchema } from "../schemas/appointment.js";
-import { changeAppointmentStatus } from "../services/appointment.service.js";
+import { changeAppointmentStatus } from "../services/appointment.js";
 
 const app = new Hono();
 
