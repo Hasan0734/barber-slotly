@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 export const createServiceSchema = z.object({
     name: z.string().trim().min(2).max(120),
@@ -9,5 +9,10 @@ export const createServiceSchema = z.object({
 
 export const updateServiceSchema = createServiceSchema.partial();
 
+export const updateServiceStatusSchema = z.object({
+    isActive: z.boolean()
+})
+
 export type CreateServiceInput = z.infer<typeof createServiceSchema>;
 export type UpdateServiceInput = z.infer<typeof updateServiceSchema>;
+export type ServiceStatusInput = z.infer<typeof updateServiceStatusSchema>;

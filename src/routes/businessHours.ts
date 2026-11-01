@@ -6,7 +6,7 @@ import { shops } from "../db/schema/shops.js";
 import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { validate } from "../lib/validate.js";
-import { businessHourSchema, updateBusinessHoursSchema } from "../schemas/business-hours.js";
+import {  updateBusinessHoursSchema } from "../schemas/business-hours.js";
 
 const app = new Hono();
 
@@ -29,6 +29,7 @@ app.put('/', authGuard, validate('json', updateBusinessHoursSchema), async (c) =
     const user = c.get('user');
     const { hours } = c.req.valid('json');
     const [shop] = await db.select().from(shops).where(eq(shops.ownerId, user.id));
+    
     if (!shop) {
         throw new HTTPException(404, { message: "You don't have shop" })
     }
@@ -51,7 +52,11 @@ app.put('/', authGuard, validate('json', updateBusinessHoursSchema), async (c) =
             }
         }).returning();
 
-    return c.json({ data: res, message: "Business hours saved successfully", success: true }, 200)
+    return c.json({
+        success: true,
+        data: res,
+        message: "Business hours saved successfully",
+    }, 200)
 
 })
 
