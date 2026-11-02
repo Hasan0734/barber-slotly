@@ -12,7 +12,8 @@ import businessHours from './routes/businessHours.js';
 import availability from './routes/availability.js';
 import appointments from './routes/appointments.js';
 import payments from './routes/payments.js';
-import webhooks from './routes/webhooks.js'
+import webhooks from './routes/webhooks.js';
+import checkout from './routes/checkout.js';
 
 
 const app = new Hono();
@@ -39,14 +40,13 @@ api.route('/availability', availability);
 api.route('/appointments', appointments);
 api.route('/payments', payments);
 api.route('/webhooks/stripe', webhooks);
-
-
+api.route('/checkout', checkout);
 
 
 app.route('/', api);
 
-app.get('/', (c) => {
-    return c.text('Hello Hono!')
+app.get('/api/health', (c) => {
+    return c.json({ success: true, message: "Server is running 👋 " }, 200)
 })
 
 
@@ -70,8 +70,6 @@ app.onError(async (err, c) => {
         500
     )
 })
-
-
 
 
 export default app;

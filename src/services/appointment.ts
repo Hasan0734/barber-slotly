@@ -99,7 +99,8 @@ export async function createAppointment(data: CreateAppointmentParams) {
 
     // 6. Create appointment
     try {
-        const [appointment] = await db.insert(appointments)
+        const [appointment] = await db
+            .insert(appointments)
             .values(appointmentData)
             .returning();
 

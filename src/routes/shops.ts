@@ -123,13 +123,13 @@ app.post('/:slug/appointments', validate('json', createAppointmentSchema), async
 
     await db.update(payments)
         .set({ providerSessionId: session.id })
-        .where(eq(payments.id, payment.id))
-
+        .where(eq(payments.id, payment.id));
 
     return c.json({
         success: true,
         message: "Appointment created successfully",
         data: appointment,
+        paymentId: payment.id,
         checkoutUrl: session.url
     }, 201)
 })
