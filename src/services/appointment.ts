@@ -5,6 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import { services } from "../db/schema/services.js";
 import { getAvailableSlots } from "./availability.js";
 import { appointments } from "../db/schema/appointments.js";
+import { bookingTokenHash } from "../lib/utils.js";
 
 type CreateAppointmentParams = {
     shopSlug: string;
@@ -78,6 +79,8 @@ export async function createAppointment(data: CreateAppointmentParams) {
         })
     }
 
+    const generatedSecretToken = bookingTokenHash;
+
     // 4. Prepare appointment data
     const appointmentData = {
         shopId: shop.id,
@@ -93,7 +96,9 @@ export async function createAppointment(data: CreateAppointmentParams) {
         serviceDuration: service.durationMinutes,
 
         startAt,
-        endAt
+        endAt,
+
+        bookingTokenHash: generatedSecretToken
     };
 
 
@@ -104,11 +109,15 @@ export async function createAppointment(data: CreateAppointmentParams) {
             .values(appointmentData)
             .returning();
 
+
+            
+
         return {
             ...appointment,
             shopName: shop.name,
             shopPhone: shop.phone,
-            shopAddress: shop.address
+            shopAddress: shop.address,
+            bookingToken: generatedSecretToken
         };
 
     } catch (err) {
@@ -173,3 +182,5 @@ export async function changeAppointmentStatus(data: AppointmentStatusParams) {
 
     return appointment;
 }
+
+

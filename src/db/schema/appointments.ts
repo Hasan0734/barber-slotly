@@ -51,6 +51,10 @@ export const appointments = pgTable("appointments", {
     //payment
     paymentMethod: paymentMethodEnum().notNull().default('pay_at_shop'),
     paymentStatus: paymentStatusEnum().notNull().default("unpaid"),
+    bookingTokenHash: varchar("booking_token_hash", {
+        length: 64
+    }).notNull().unique(),
+
 
     reservationExpiresAt: timestamp("reservation_expires_at", {
         withTimezone: true,
@@ -60,6 +64,7 @@ export const appointments = pgTable("appointments", {
         withTimezone: true,
         mode: 'date'
     }).defaultNow().notNull(),
+
     updatedAt: timestamp("updated_at", {
         withTimezone: true,
         mode: "date"

@@ -7,14 +7,13 @@ import { and, eq, or } from "drizzle-orm";
 import { shopSchema, updateShopSchema } from "../schemas/shop.js";
 import { HTTPException } from "hono/http-exception";
 import { createAppointmentSchema } from "../schemas/appointment.js";
-import { appointments } from "../db/schema/appointments.js";
-import { services } from "../db/schema/services.js";
 import { availabilityQuerySchema } from "../schemas/availability.js";
 import { getAvailableSlots } from "../services/availability.js";
 import { createAppointment } from "../services/appointment.js";
 import { createPayment } from "../services/payment.js";
 import { createCheckoutSession } from "../stripe.js";
 import { payments } from "../db/schema/payments.js";
+import { setCookie } from "hono/cookie";
 
 const app = new Hono();
 
@@ -22,9 +21,7 @@ const app = new Hono();
 // shop lists
 app.get('/', async (c) => {
     const res = await db.select().from(shops).limit(10);
-    return c.json({ data: res, success: true }, 200)
-
-
+    return c.json({ data: res, success: true }, 200);
 })
 
 app.post('/', authGuard, validate('json', shopSchema), async (c) => {
@@ -99,6 +96,7 @@ app.post('/:slug/appointments', validate('json', createAppointmentSchema), async
         shopSlug
     })
 
+
     const payment = await createPayment({
         appointmentId: appointment.id,
         servicePrice: appointment.servicePrice
@@ -109,30 +107,45 @@ app.post('/:slug/appointments', validate('json', createAppointmentSchema), async
         throw new HTTPException(400, { message: "Something went wrong" })
     }
 
-    const session = await createCheckoutSession({
-        appointmentId: appointment.id,
-        serviceName: appointment.serviceName,
-        servicePrice: appointment.servicePrice,
-        paymentId: payment.id
-    });
 
 
-    if (!session) {
-        throw new HTTPException(400, { message: "Payment failed" })
-    }
 
-    await db.update(payments)
-        .set({ providerSessionId: session.id })
-        .where(eq(payments.id, payment.id));
+    const { bookingToken, ...rest } = appointment;
+
+    setCookie(c, "slotly_booking_token", bookingToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "None",
+        path: '/',
+        maxAge: 60 * 60 * 24, // 24 hours
+    })
+
+
+    // await db.update(payments)
+    //     .set({ providerSessionId: session.id })
+    //     .where(eq(payments.id, payment.id));
 
     return c.json({
         success: true,
         message: "Appointment created successfully",
-        data: appointment,
+        data: rest,
         paymentId: payment.id,
-        checkoutUrl: session.url
-    }, 201)
+    }, 201);
 })
+
+
+
+// const session = await createCheckoutSession({
+//     appointmentId: appointment.id,
+//     serviceName: appointment.serviceName,
+//     servicePrice: appointment.servicePrice,
+//     paymentId: payment.id
+// });
+
+
+// if (!session) {
+//     throw new HTTPException(400, { message: "Payment failed" })
+// }
 
 // check avaibility
 app.get("/:slug/availability", validate('query', availabilityQuerySchema), async (c) => {

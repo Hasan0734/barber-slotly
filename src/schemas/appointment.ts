@@ -24,6 +24,7 @@ export const createAppointmentSchema = z.object({
         offset: true,
         message: "Invalid appointment date and time"
     })
+
 });
 
 
@@ -31,7 +32,7 @@ export const updateAppointmentStatusSchema = z.object({
     status: z.enum(["confirmed", "cancelled", "completed", "no_show"])
 })
 
-export const updateAppointSchema = z.object({
+export const updateAppointmentSchema = z.object({
     customerName: z.string()
         .trim()
         .min(2)
@@ -86,9 +87,14 @@ export const appointmentQuerySchema = z.object({
     ]).default("desc")
 })
 
+
+export const switchPaymentMethod = z.object({
+    paymentMethod: z.enum(["pay_at_shop", "online"])
+})
+
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
 export type UpdateAppointmentStatusInput = z.infer<typeof updateAppointmentStatusSchema>;
-export type UpdateAppointmentInput = z.infer<typeof updateAppointSchema>;
+export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>;
 export type AppointmentQuery = z.infer<typeof appointmentQuerySchema>;
-
+export type SwitchPaymentMethod = z.infer<typeof switchPaymentMethod>;
 

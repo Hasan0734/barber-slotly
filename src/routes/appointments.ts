@@ -3,11 +3,14 @@ import db from "../db/index.js";
 import { authGuard } from "../middleware/auth-guard.js";
 import { appointments } from "../db/schema/appointments.js";
 import { shops } from "../db/schema/shops.js";
-import { and, asc, count, desc, eq, getTableColumns, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, ilike, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { validate } from "../lib/validate.js";
-import { appointmentQuerySchema, updateAppointmentStatusSchema, updateAppointSchema } from "../schemas/appointment.js";
+import { appointmentQuerySchema, updateAppointmentStatusSchema, updateAppointmentSchema, switchPaymentMethod } from "../schemas/appointment.js";
 import { changeAppointmentStatus } from "../services/appointment.js";
+import { getCookie } from "hono/cookie";
+import { bearerAuth } from "hono/bearer-auth";
+import { bookingTokenValidate } from "../middleware/token-validate.js";
 
 const app = new Hono();
 
@@ -100,6 +103,49 @@ app.get('/:id', authGuard, async (c) => {
     return c.json({ success: true, data: appointment }, 200)
 })
 
+app.patch("/:id/payment-method", bookingTokenValidate, validate('json', switchPaymentMethod), async (c) => {
+    const { paymentMethod } = c.req.valid('json');
+    const id = c.req.param('id');
+
+    const bookingToken = getCookie(c, "slotly_booking_token");
+    if (!bookingToken) {
+        return c.json({ message: "Unauthorized" }, 401);
+    }
+
+    return c.json({message: "Hello"});
+
+    const [appointment] = await db
+        .update(appointments)
+        .set({ paymentMethod })
+        .where(
+            and(
+                eq(appointments.id, id),
+                eq(appointments.status, "pending"),
+
+                or(
+                    eq(appointments.paymentStatus, "pending"),
+                    eq(appointments.paymentStatus, "unpaid"),
+                    eq(appointments.paymentStatus, "failed")
+                )
+
+            )
+        ).returning();
+
+    if (!appointment) {
+        throw new HTTPException(404, { message: "Appointment not found." })
+    }
+
+    return c.json({
+        success: true,
+        message: "Payment method changed",
+        data: {
+            appointmentId: appointment.id,
+            paymentMethod: appointment.paymentMethod
+        }
+    })
+
+})
+
 app.patch('/:id/status', authGuard, validate('json', updateAppointmentStatusSchema), async (c) => {
     const user = c.get('user');
     const id = c.req.param('id');
@@ -118,7 +164,7 @@ app.patch('/:id/status', authGuard, validate('json', updateAppointmentStatusSche
     }, 200)
 })
 
-app.patch('/:id', authGuard, validate("json", updateAppointSchema), async (c) => {
+app.patch('/:id', authGuard, validate("json", updateAppointmentSchema), async (c) => {
     const user = c.get('user');
     const id = c.req.param('id');
     const body = c.req.valid('json')
