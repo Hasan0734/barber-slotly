@@ -26,6 +26,8 @@ export const paymentStatusEnum = pgEnum("appointment_payment_status", [
     "refunded"
 ])
 
+export const cancelledByEnum = pgEnum("cancelled_by", ["owner", "customer"])
+
 
 export const appointments = pgTable("appointments", {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -99,9 +101,8 @@ export const appointments = pgTable("appointments", {
         withTimezone: true,
         mode: "date"
     }),
-    cancelledBy: varchar("cancelled_by", {
-        length: 20
-    }),
+    cancelledBy: cancelledByEnum("cancelled_by"),
+
     cancellationReason: text("cancellation_reason")
 
 

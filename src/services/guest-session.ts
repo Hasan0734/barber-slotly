@@ -1,10 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { generateTokenHash } from "../lib/utils.js";
 import db from "../db/index.js";
-import { guestSessions } from "../db/schema/guest-sessions.js";
 import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
+import { guestSessions } from "../db/schema/guest-sessions.js";
+import { HTTPException } from "hono/http-exception";
+import { appointments } from "../db/schema/appointments.js";
 
 
 export async function createGuestSession() {
@@ -27,8 +29,6 @@ export async function createGuestSession() {
     }
 }
 
-
-
 export async function getOrCreateGuestSession(c: Context) {
     const sessionToken = getCookie(c, "slotly_guest_session");
 
@@ -46,8 +46,6 @@ export async function getOrCreateGuestSession(c: Context) {
             id: session.id,
             token
         }
-
-
     }
 
     const tokenHash = generateTokenHash(sessionToken);
@@ -80,4 +78,64 @@ export async function getOrCreateGuestSession(c: Context) {
         id: session.id,
         token: sessionToken
     }
+}
+
+type ClaimGuestSessionParams = {
+    guestToken: string;
+    userId: string;
+};
+
+export async function claimGuestSessionService({
+    guestToken,
+    userId
+}: ClaimGuestSessionParams) {
+    const tokenHash = generateTokenHash(guestToken);
+    const nowDate = new Date();
+
+    return db.transaction(async (tx) => {
+
+        const [guestSession] = await tx
+            .update(guestSessions)
+            .set({
+                customerId: userId,
+                claimedAt: nowDate,
+                revokedAt: nowDate
+            })
+            .where(
+                and(
+                    eq(guestSessions.tokenHash, tokenHash),
+                    gt(guestSessions.expiresAt, nowDate),
+                    isNull(guestSessions.claimedAt),
+                    isNull(guestSessions.revokedAt)
+
+                )
+            )
+            .returning({
+                id: guestSessions.id,
+            });
+
+        if (!guestSession) {
+            throw new HTTPException(401, {
+                message: "Invalid or expired guest session"
+            })
+        }
+
+        const claimedAppointments = await tx.update(appointments)
+            .set({
+                customerId: userId
+            })
+            .where(
+                and(
+                    eq(appointments.guestSessionId, guestSession.id),
+                    isNull(appointments.customerId)
+                )
+            )
+            .returning({
+                id: appointments.id,
+            });
+
+        return {
+            claimedCount: claimedAppointments.length,
+        }
+    })
 }

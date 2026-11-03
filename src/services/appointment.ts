@@ -378,7 +378,6 @@ export async function updateAppointment({ userId, id, data }: UpdateAppointmentP
     return appointment;
 }
 
-
 export async function cancelAppointment({ id, customer, reason }: CancelAppointmentParams) {
     const condition = customer?.type === "registered"
         ? and(
@@ -414,7 +413,7 @@ export async function cancelAppointment({ id, customer, reason }: CancelAppointm
             status: "cancelled",
             cancelledAt: new Date(),
             cancelledBy: "customer",
-             cancellationReason: reason ?? null,
+            cancellationReason: reason ?? null,
             updatedAt: new Date()
         })
         .where(
@@ -427,7 +426,7 @@ export async function cancelAppointment({ id, customer, reason }: CancelAppointm
         )
         .returning();
 
-    if (!cancelAppointment) {
+    if (!cancelledAppointment) {
         throw new HTTPException(409, {
             message: "Appointment has already been updated"
         })
