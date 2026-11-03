@@ -8,7 +8,7 @@ export const slugify = (text: string) => text.toLowerCase().trim()
 
 
 
-export const bookingTokenHash = (token: string) => {
+export const generateTokenHash = (token: string) => {
     return createHash('sha256')
         .update(token)
         .digest("hex")

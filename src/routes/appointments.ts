@@ -1,62 +1,39 @@
 import { Hono } from "hono";
-import db from "../db/index.js";
 import { authGuard } from "../middleware/auth-guard.js";
-import { appointments } from "../db/schema/appointments.js";
-import { shops } from "../db/schema/shops.js";
-import { and, asc, count, desc, eq, getTableColumns, ilike, or } from "drizzle-orm";
-import { HTTPException } from "hono/http-exception";
 import { validate } from "../lib/validate.js";
-import { appointmentQuerySchema, updateAppointmentStatusSchema, updateAppointmentSchema, switchPaymentMethod } from "../schemas/appointment.js";
-import { changeAppointmentStatus } from "../services/appointment.js";
-import { validateBookingToken } from "../middleware/token-validate.js";
+import {
+    appointmentQuerySchema,
+    updateAppointmentStatusSchema,
+    updateAppointmentSchema,
+    switchPaymentMethod
+} from "../schemas/appointment.js";
+import {
+    changeAppointmentStatus,
+    changePaymentMethod,
+    getAppointment,
+    getCustomerAppointments,
+    getOwnerAppointments,
+    updateAppointment
+} from "../services/appointment.js";
+import { validateAuth } from "../middleware/validateAuth.js";
 
 const app = new Hono();
 
-app.get('/', authGuard, validate('query', appointmentQuerySchema), async (c) => {
+app.get('/owner', authGuard, validate('query', appointmentQuerySchema), async (c) => {
     const user = c.get('user');
     const query = c.req.valid('query');
     const { page, limit, status, search, sort } = query;
     const offset = (page - 1) * limit;
 
-    const conditions = [
-        eq(appointments.shopId, shops.id),
-        eq(shops.ownerId, user.id)
-    ]
 
-    if (status) {
-        conditions.push(
-            eq(appointments.status, status)
-        )
-    }
-
-    if (search) {
-        conditions.push(
-            ilike(appointments.customerName, `${search}`)
-        )
-    }
-
-    const orderBy = sort === 'asc' ? asc(appointments.startAt) : desc(appointments.startAt)
-
-    const [data, totalResult] = await Promise.all([
-        db.select({
-            ...getTableColumns(appointments)
-        })
-            .from(appointments)
-            .innerJoin(shops,
-                eq(appointments.shopId, shops.id)
-            )
-            .where(and(...conditions))
-            .orderBy(orderBy)
-            .limit(limit)
-            .offset(offset),
-        db.select({ total: count() })
-            .from(appointments)
-            .innerJoin(
-                shops,
-                eq(appointments.shopId, shops.id)
-            )
-            .where(and(...conditions))
-    ]);
+    const { data, totalResult } = await getOwnerAppointments({
+        offset,
+        limit,
+        status,
+        search,
+        sort,
+        userId: user.id
+    })
 
     const total = totalResult[0].total;
     return c.json({
@@ -73,58 +50,49 @@ app.get('/', authGuard, validate('query', appointmentQuerySchema), async (c) => 
     }, 200)
 })
 
+app.get('/', validateAuth, validate('query', appointmentQuerySchema), async (c) => {
+    const query = c.req.valid('query');
+    const customer = c.get('customer');
+    const { page, limit, status, search, sort } = query;
+    const offset = (page - 1) * limit;
+
+
+    const { data, totalResult } = await getCustomerAppointments({
+        offset,
+        limit,
+        status,
+        search,
+        sort,
+        customer
+    })
+
+    const total = totalResult[0].total;
+    return c.json({
+        success: true,
+        data,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            hasNextPage: page * limit < total,
+            hasPreviousPage: page > 1
+        }
+    }, 200)
+})
 app.get('/:id', authGuard, async (c) => {
     const user = c.get('user');
     const id = c.req.param('id');
-
-    const [appointment] = await db.select({
-        ...getTableColumns(appointments),
-        shopName: shops.name,
-        shopPhone: shops.phone,
-        shopAddress: shops.address
-
-    })
-        .from(appointments)
-        .innerJoin(shops, eq(appointments.shopId, shops.id))
-        .where(
-            and(
-                eq(appointments.id, id),
-                eq(shops.ownerId, user.id),
-            )
-        )
-        .limit(1);
-
-    if (!appointment) {
-        throw new HTTPException(404, { message: "Appointment not found" })
-    }
-
+    const appointment = getAppointment(id, user.id)
     return c.json({ success: true, data: appointment }, 200)
 })
 
-app.patch("/:id/payment-method", validateBookingToken, validate('json', switchPaymentMethod), async (c) => {
+app.patch("/:id/payment-method", validateAuth, validate('json', switchPaymentMethod), async (c) => {
     const { paymentMethod } = c.req.valid('json');
-    const validatedAppointmentId = c.get('appointmentId');
+    const id = c.req.param('id');
+    const customer = c.get('customer');
 
-    const [appointment] = await db
-        .update(appointments)
-        .set({ paymentMethod })
-        .where(
-            and(
-                eq(appointments.id, validatedAppointmentId),
-                eq(appointments.status, "pending"),
-
-                or(
-                    eq(appointments.paymentStatus, "unpaid"),
-                    eq(appointments.paymentStatus, "failed")
-                )
-
-            )
-        ).returning();
-
-    if (!appointment) {
-        throw new HTTPException(404, { message: "Payment method cannot be changed" })
-    }
-
+    const appointment = await changePaymentMethod({ id, customer, paymentMethod })
     return c.json({
         success: true,
         message: "Payment method changed",
@@ -159,27 +127,7 @@ app.patch('/:id', authGuard, validate("json", updateAppointmentSchema), async (c
     const id = c.req.param('id');
     const body = c.req.valid('json')
 
-    const appointment = await db.update(appointments)
-        .set(body)
-        .from(shops)
-        .where(
-            and(
-                eq(appointments.id, id),
-                eq(appointments.shopId, shops.id),
-                eq(shops.ownerId, user.id),
-            )
-        ).returning(
-            {
-                ...getTableColumns(appointments),
-                shopName: shops.name,
-                shopPhone: shops.phone,
-                shopAddress: shops.address
-            }
-        );
-
-    if (!appointment) {
-        throw new HTTPException(404, { message: "Appointment not found" })
-    }
+    const appointment = await updateAppointment({ userId: user.id, id, data: body })
 
     return c.json({
         success: true,

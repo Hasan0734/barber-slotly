@@ -1,23 +1,21 @@
-import { and, eq, getTableColumns, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, ilike, inArray, isNull, or, SQL } from "drizzle-orm";
 import db from "../db/index.js";
 import { shops } from "../db/schema/shops.js";
 import { HTTPException } from "hono/http-exception";
 import { services } from "../db/schema/services.js";
 import { getAvailableSlots } from "./availability.js";
 import { appointments } from "../db/schema/appointments.js";
-import { bookingTokenHash } from "../lib/utils.js";
 import { randomBytes } from "node:crypto";
+import type {
+    AppointmentStatusParams,
+    ChangePaymentMethodParams,
+    CreateAppointmentParams,
+    GetAppointmentsParams,
+    UpdateAppointmentParams
+} from "../types/appointment.js";
 
-type CreateAppointmentParams = {
-    shopSlug: string;
-    serviceId: string;
-    customerName: string;
-    customerPhone: string;
-    customerEmail?: string | null;
-    customerNote?: string | null;
-    startAt: string
 
-}
+
 export async function createAppointment(data: CreateAppointmentParams) {
     // 1. Find shop
     const [shop] = await db.select()
@@ -28,6 +26,12 @@ export async function createAppointment(data: CreateAppointmentParams) {
 
     if (!shop) {
         throw new HTTPException(404, { message: "Shop not found" })
+    }
+
+    if (shop.ownerId === data.customerId) {
+        throw new HTTPException(403, {
+            message: "Shop owners cannot book appointments at their own shop",
+        });
     }
 
     const timezone = shop.timezone || "Asia/Dhaka"
@@ -79,12 +83,7 @@ export async function createAppointment(data: CreateAppointmentParams) {
             message: "This appointment slot is no longer available"
         })
     }
-
-
     const bookingToken = randomBytes(32).toString('hex');
-
-
-
     // 4. Prepare appointment data
     const appointmentData = {
         shopId: shop.id,
@@ -94,17 +93,16 @@ export async function createAppointment(data: CreateAppointmentParams) {
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail ?? null,
         customerNote: data.customerNote ?? null,
-
+        customerId: data.customerId ?? null,
+        guestSessionId: data.guestSessionId ?? null,
         serviceName: service.name,
         servicePrice: service.price,
         serviceDuration: service.durationMinutes,
-
         startAt,
         endAt,
 
-        bookingTokenHash: bookingTokenHash(bookingToken)
-    };
 
+    };
 
     // 6. Create appointment
     try {
@@ -144,15 +142,8 @@ const allowedTransitions = {
     no_show: []
 } as const
 
-type AppointmentStatusParams = {
-    id: string
-    ownerId: string;
-    status: "pending" | "confirmed" | "completed" | "cancelled" | "no_show"
-}
 
 export async function changeAppointmentStatus(data: AppointmentStatusParams) {
-
-
     const appointment = await db.update(appointments).set({ status: data.status })
         .from(shops)
         .where(
@@ -184,4 +175,205 @@ export async function changeAppointmentStatus(data: AppointmentStatusParams) {
     return appointment;
 }
 
+export async function getOwnerAppointments({
+    limit, offset,
+    userId, status,
+    sort, search
+}: GetAppointmentsParams) {
 
+    const conditions = [
+        eq(appointments.shopId, shops.id)
+    ]
+
+    if (userId) {
+        conditions.push(eq(shops.ownerId, userId))
+    }
+
+    if (status) {
+        conditions.push(
+            eq(appointments.status, status)
+        )
+    }
+
+    if (search) {
+        conditions.push(
+            ilike(appointments.customerName, `${search}`)
+        )
+    }
+
+    const orderBy = sort === 'asc' ? asc(appointments.startAt) : desc(appointments.startAt)
+
+    const [data, totalResult] = await Promise.all([
+        db.select({
+            ...getTableColumns(appointments)
+        })
+            .from(appointments)
+            .innerJoin(shops,
+                eq(appointments.shopId, shops.id)
+            )
+            .where(and(...conditions))
+            .orderBy(orderBy)
+            .limit(limit)
+            .offset(offset),
+        db.select({ total: count() })
+            .from(appointments)
+            .innerJoin(
+                shops,
+                eq(appointments.shopId, shops.id)
+            )
+            .where(and(...conditions))
+    ]);
+
+    return {
+        data, totalResult
+    }
+}
+export async function getCustomerAppointments({
+    customer, limit,
+    offset, status,
+    sort, search
+}: GetAppointmentsParams) {
+
+    const customerConditions = customer?.type === "registered"
+        ? eq(appointments.customerId, customer.customerId)
+        : and(
+            eq(appointments.guestSessionId, customer?.guestSessionId as string),
+            isNull(appointments.customerId)
+        )
+
+    const conditions = [
+        customerConditions,
+    ]
+
+    if (status) {
+        conditions.push(
+            eq(appointments.status, status)
+        )
+    }
+
+    if (search) {
+        conditions.push(
+            ilike(appointments.customerName, `${search}`)
+        )
+    }
+
+    const orderBy = sort === 'asc' ? asc(appointments.startAt) : desc(appointments.startAt)
+
+    const [data, totalResult] = await Promise.all([
+        db.select({
+            ...getTableColumns(appointments)
+        })
+            .from(appointments)
+            .where(and(...conditions))
+            .orderBy(orderBy)
+            .limit(limit)
+            .offset(offset),
+
+        db.select({ total: count() })
+            .from(appointments)
+            .where(and(...conditions))
+    ]);
+
+    return {
+        data,
+        totalResult
+    }
+}
+
+export async function getAppointment(id: string, userId: string) {
+
+    const [appointment] = await db.select({
+        ...getTableColumns(appointments),
+        shopName: shops.name,
+        shopPhone: shops.phone,
+        shopAddress: shops.address
+
+    })
+        .from(appointments)
+        .innerJoin(shops, eq(appointments.shopId, shops.id))
+        .where(
+            and(
+                eq(appointments.id, id),
+                eq(shops.ownerId, userId),
+            )
+        )
+        .limit(1);
+
+    if (!appointment) {
+        throw new HTTPException(404, { message: "Appointment not found" })
+    }
+}
+
+export async function changePaymentMethod({ customer, id, paymentMethod }: ChangePaymentMethodParams) {
+
+    const condition = customer.type === "registered"
+        ? and(
+            eq(appointments.id, id),
+            eq(appointments.customerId, customer.customerId)
+        )
+        : and(
+            eq(appointments.id, id),
+            eq(appointments.guestSessionId, customer.guestSessionId),
+            isNull(appointments.customerId)
+        )
+
+
+    const [getAppointment] = await db
+        .select()
+        .from(appointments)
+        .where(condition)
+        .limit(1);
+
+    const reservationExpiresAt = paymentMethod === "online"
+        ? new Date(Date.now() + 15 * 60 * 1000)
+        : null;
+
+    const [appointment] = await db
+        .update(appointments)
+        .set({ paymentMethod, reservationExpiresAt })
+        .where(
+            and(
+                eq(appointments.id, getAppointment.id),
+                eq(appointments.status, "pending"),
+                or(
+                    eq(appointments.paymentStatus, "unpaid"),
+                    eq(appointments.paymentStatus, "failed")
+                )
+
+            )
+        ).returning();
+
+    if (!appointment) {
+        throw new HTTPException(404, { message: "Payment method cannot be changed" })
+    }
+
+    return appointment;
+}
+
+
+export async function updateAppointment({ userId, id, data }: UpdateAppointmentParams) {
+
+    const appointment = await db.update(appointments)
+        .set(data)
+        .from(shops)
+        .where(
+            and(
+                eq(appointments.id, id),
+                eq(appointments.shopId, shops.id),
+                eq(shops.ownerId, userId),
+            )
+        ).returning(
+            {
+                ...getTableColumns(appointments),
+                shopName: shops.name,
+                shopPhone: shops.phone,
+                shopAddress: shops.address
+            }
+        );
+
+    if (!appointment) {
+        throw new HTTPException(404, { message: "Appointment not found" })
+    }
+
+    return appointment;
+}

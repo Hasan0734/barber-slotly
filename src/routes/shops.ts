@@ -14,6 +14,7 @@ import { createPayment } from "../services/payment.js";
 import { createCheckoutSession } from "../stripe.js";
 import { payments } from "../db/schema/payments.js";
 import { setCookie } from "hono/cookie";
+import { resolveCustomerSession } from "../middleware/resolve-customer-session.js";
 
 const app = new Hono();
 
@@ -86,37 +87,46 @@ app.delete('/me', authGuard, async (c) => {
 })
 
 // create appointments
-app.post('/:slug/appointments', validate('json', createAppointmentSchema), async (c) => {
+app.post('/:slug/appointments', resolveCustomerSession, validate('json', createAppointmentSchema), async (c) => {
 
     const body = c.req.valid('json');
     const shopSlug = c.req.param('slug');
+    const customer = c.get('customer');
+
+
+    const ownership =
+        customer.type === "registered"
+            ? {
+                customerId: customer.customerId,
+                guestSessionId: null,
+            }
+            : {
+                customerId: null,
+                guestSessionId: customer.guestSessionId,
+            };
 
     const appointment = await createAppointment({
         ...body,
-        shopSlug
+        shopSlug,
+        ...ownership
     })
+    // const payment = await createPayment({
+    //     appointmentId: appointment.id,
+    //     servicePrice: appointment.servicePrice
+    // });
 
-
-    const payment = await createPayment({
-        appointmentId: appointment.id,
-        servicePrice: appointment.servicePrice
-    });
-
-
-    if (!appointment || !payment) {
-        throw new HTTPException(400, { message: "Something went wrong" })
-    }
-
-
+    // if (!appointment || !payment) {
+    //     throw new HTTPException(400, { message: "Something went wrong" })
+    // }
     const { bookingToken, ...rest } = appointment;
 
-    setCookie(c, "slotly_booking_token", bookingToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "None",
-        path: '/',
-        maxAge: 60 * 60 * 24, // 24 hours
-    })
+    // setCookie(c, "slotly_booking_token", bookingToken, {
+    //     httpOnly: true,
+    //     secure: process.env.NODE_ENV === "production",
+    //     sameSite: "None",
+    //     path: '/',
+    //     maxAge: 60 * 60 * 24 * 30,
+    // })
 
 
     // await db.update(payments)
@@ -127,7 +137,6 @@ app.post('/:slug/appointments', validate('json', createAppointmentSchema), async
         success: true,
         message: "Appointment created successfully",
         data: rest,
-        paymentId: payment.id,
     }, 201);
 })
 

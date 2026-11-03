@@ -1,7 +1,6 @@
-import { and, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
-
 import db from "../db/index.js";
 import { services } from "../db/schema/services.js";
 import { businessHours } from "../db/schema/business-hours.js";
@@ -9,6 +8,7 @@ import { shops } from "../db/schema/shops.js";
 import { appointments } from "../db/schema/appointments.js";
 
 const SLOT_INTERVAL_MINUTES = 15;
+const nowTime = new Date();
 
 function timeToMinutes(time: string): number {
     const [hour, minute] = time.split(":").map(Number);
@@ -100,10 +100,18 @@ export async function getAvailableSlots({
                 eq(appointments.shopId, shop.id),
                 lt(appointments.startAt, dayEnd),
                 gt(appointments.endAt, dayStart),
-                inArray(appointments.status, [
-                    "pending",
-                    "confirmed"
-                ])
+
+                or(
+                    eq(appointments.status, "confirmed"),
+                    and(
+                        eq(appointments.status, "pending"),
+                        isNull(appointments.reservationExpiresAt)
+                    ),
+                    and(
+                        eq(appointments.status, "pending"),
+                        gt(appointments.reservationExpiresAt, nowTime)
+                    )
+                )
             )
         );
 
@@ -117,7 +125,6 @@ export async function getAvailableSlots({
 
         const hour = Math.floor(startMinutes / 60);
         const minute = startMinutes % 60;
-
         const localStartTime =
             `${String(hour).padStart(2, "0")}:` +
             `${String(minute).padStart(2, "0")}`;
@@ -126,14 +133,12 @@ export async function getAvailableSlots({
             `${date}T${localStartTime}:00`,
             timezone,
         );
-
         const endAt = new Date(
             startAt.getTime() +
             service.durationMinutes * 60 * 1000,
         );
 
         if (startAt <= now) continue;
-
         const hasConflict = existingAppointments.some((appointment) => {
             return (
                 appointment.startAt < endAt && appointment.endAt > startAt
