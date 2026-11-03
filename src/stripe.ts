@@ -39,7 +39,7 @@ export async function createCheckoutSession({ appointmentId, serviceName, servic
         expires_at: expiresAt
     },
         {
-            idempotencyKey: `checkout-${appointmentId}`
+            idempotencyKey: `checkout-${appointmentId}-${paymentId}`
         }
     )
 

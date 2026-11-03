@@ -93,7 +93,16 @@ export const appointments = pgTable("appointments", {
     customerId: text("customer_id")
         .references(() => user.id, {
             onDelete: "set null"
-        })
+        }),
+
+    cancelledAt: timestamp("cancelled_at", {
+        withTimezone: true,
+        mode: "date"
+    }),
+    cancelledBy: varchar("cancelled_by", {
+        length: 20
+    }),
+    cancellationReason: text("cancellation_reason")
 
 
 }, (table) => [

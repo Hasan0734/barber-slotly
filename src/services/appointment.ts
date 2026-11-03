@@ -8,6 +8,7 @@ import { appointments } from "../db/schema/appointments.js";
 import { randomBytes } from "node:crypto";
 import type {
     AppointmentStatusParams,
+    CancelAppointmentParams,
     ChangePaymentMethodParams,
     CreateAppointmentParams,
     GetAppointmentsParams,
@@ -375,4 +376,63 @@ export async function updateAppointment({ userId, id, data }: UpdateAppointmentP
     }
 
     return appointment;
+}
+
+
+export async function cancelAppointment({ id, customer, reason }: CancelAppointmentParams) {
+    const condition = customer?.type === "registered"
+        ? and(
+            eq(appointments.id, id),
+            eq(appointments.customerId, customer.customerId)
+        )
+        : and(
+            eq(appointments.id, id),
+            eq(appointments.guestSessionId, customer?.guestSessionId!),
+            isNull(appointments.customerId)
+        );
+
+    const [appointment] = await db
+        .select()
+        .from(appointments)
+        .where(condition)
+        .limit(1);
+
+    if (!appointment) {
+        throw new HTTPException(404, {
+            message: "Appointment not found",
+        })
+    }
+
+    if (!["pending", "confirmed"].includes(appointment.status)) {
+        throw new HTTPException(400, {
+            message: "This appointment cannot be cancelled"
+        })
+    }
+    const [cancelledAppointment] = await db
+        .update(appointments)
+        .set({
+            status: "cancelled",
+            cancelledAt: new Date(),
+            cancelledBy: "customer",
+             cancellationReason: reason ?? null,
+            updatedAt: new Date()
+        })
+        .where(
+            and(
+                eq(appointments.id, id),
+                inArray(appointments.status, [
+                    "pending", "confirmed"
+                ])
+            )
+        )
+        .returning();
+
+    if (!cancelAppointment) {
+        throw new HTTPException(409, {
+            message: "Appointment has already been updated"
+        })
+    }
+
+    return appointment;
+
 }

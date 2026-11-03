@@ -50,3 +50,9 @@ export type UpdateAppointmentParams = {
     id: string,
     data: UpdateAppointmentInput
 }
+
+export type CancelAppointmentParams = {
+    customer: BookingCustomer | undefined;
+    id: string;
+    reason: string;
+}

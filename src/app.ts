@@ -49,6 +49,15 @@ app.get('/api/health', (c) => {
     return c.json({ success: true, message: "Server is running 👋 " }, 200)
 })
 
+app.get("/success", (c) => {
+    const sessionId = c.req.query('session_id');
+    return c.json({ message: "Payment success", sessionId, success: true }, 200)
+})
+
+app.get("/cancel", (c) => {
+    return c.json({ message: "Payment failed or cancelled", success: false }, 400)
+})
+
 
 app.notFound((c) => {
     return c.json(

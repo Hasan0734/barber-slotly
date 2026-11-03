@@ -104,6 +104,17 @@ app.patch("/:id/payment-method", validateAuth, validate('json', switchPaymentMet
 
 })
 
+app.patch("/:id/cancel", validateAuth, async (c) => {
+    const customer = c.get('customer');
+
+
+
+    return c.json({
+        message: "Appointment cancelled.",
+        success: true,
+    }, 201)
+})
+
 app.patch('/:id/status', authGuard, validate('json', updateAppointmentStatusSchema), async (c) => {
     const user = c.get('user');
     const id = c.req.param('id');
