@@ -49,8 +49,10 @@ export const appointments = pgTable("appointments", {
     status: appointmentStatusEnum().notNull().default('pending'),
 
     //payment
-    paymentMethod: paymentMethodEnum().notNull().default('pay_at_shop'),
-    paymentStatus: paymentStatusEnum().notNull().default("unpaid"),
+    paymentMethod: paymentMethodEnum("payment_method"),
+    paymentStatus: paymentStatusEnum("payment_status")
+    .notNull()
+    .default("unpaid"),
     bookingTokenHash: varchar("booking_token_hash", {
         length: 64
     }).notNull().unique(),

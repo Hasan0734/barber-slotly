@@ -108,8 +108,6 @@ app.post('/:slug/appointments', validate('json', createAppointmentSchema), async
     }
 
 
-
-
     const { bookingToken, ...rest } = appointment;
 
     setCookie(c, "slotly_booking_token", bookingToken, {

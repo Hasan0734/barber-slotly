@@ -6,6 +6,7 @@ import { services } from "../db/schema/services.js";
 import { getAvailableSlots } from "./availability.js";
 import { appointments } from "../db/schema/appointments.js";
 import { bookingTokenHash } from "../lib/utils.js";
+import { randomBytes } from "node:crypto";
 
 type CreateAppointmentParams = {
     shopSlug: string;
@@ -79,7 +80,10 @@ export async function createAppointment(data: CreateAppointmentParams) {
         })
     }
 
-    const generatedSecretToken = bookingTokenHash;
+
+    const bookingToken = randomBytes(32).toString('hex');
+
+
 
     // 4. Prepare appointment data
     const appointmentData = {
@@ -98,7 +102,7 @@ export async function createAppointment(data: CreateAppointmentParams) {
         startAt,
         endAt,
 
-        bookingTokenHash: generatedSecretToken
+        bookingTokenHash: bookingTokenHash(bookingToken)
     };
 
 
@@ -109,15 +113,12 @@ export async function createAppointment(data: CreateAppointmentParams) {
             .values(appointmentData)
             .returning();
 
-
-            
-
         return {
             ...appointment,
             shopName: shop.name,
             shopPhone: shop.phone,
             shopAddress: shop.address,
-            bookingToken: generatedSecretToken
+            bookingToken
         };
 
     } catch (err) {

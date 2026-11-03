@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto"
+import { createHash } from "node:crypto"
 
 export const slugify = (text: string) => text.toLowerCase().trim()
     .replace(/[^\w\s-]/g, "")
@@ -7,5 +7,9 @@ export const slugify = (text: string) => text.toLowerCase().trim()
 
 
 
-const bookingToken = randomBytes(32).toString('hex');
-export const bookingTokenHash = createHash('sha256').update(bookingToken).digest("hex")
+
+export const bookingTokenHash = (token: string) => {
+    return createHash('sha256')
+        .update(token)
+        .digest("hex")
+}

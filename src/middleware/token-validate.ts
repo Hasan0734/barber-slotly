@@ -1,32 +1,40 @@
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import db from "../db/index.js";
 import { appointments } from "../db/schema/appointments.js";
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { bookingTokenHash } from "../lib/utils.js";
 
-export const bookingTokenValidate = createMiddleware(async (c) => {
+
+type BookingValidateVariables = {
+    Variables: {
+        appointmentId: typeof appointments.$inferSelect.id,
+    };
+};
+
+
+export const validateBookingToken = createMiddleware<BookingValidateVariables>(async (c, next) => {
     const bookingToken = getCookie(c, "slotly_booking_token");
     const id = c.req.param('id');
+
 
     if (!bookingToken) {
         throw new HTTPException(401, { message: "Unauthorized" })
     }
 
-    const tokenHash = createHash("sha256")
-        .update(bookingToken)
-        .digest("hex");
+    const tokenHash = bookingTokenHash(bookingToken);
+
+    // console.log(bookingToken, tokenHash)
 
     const [appointment] = await db.select()
         .from(appointments)
         .where(
             and(
                 eq(appointments.id, id as string),
-                eq(appointments.bookingTokenHash, bookingToken)
-
+                eq(appointments.bookingTokenHash, tokenHash)
             )
-
         )
         .limit(1);
 
@@ -34,15 +42,6 @@ export const bookingTokenValidate = createMiddleware(async (c) => {
         throw new HTTPException(404, { message: "Appointment not found" })
     }
 
-    const storedHash = Buffer.from(appointment.bookingTokenHash, "hex");
-    const suppliedHash = Buffer.from(tokenHash, "hex");
-
-    const isValid = storedHash.length === suppliedHash.length && timingSafeEqual(storedHash, suppliedHash);
-
-    if (!isValid) {
-        throw new HTTPException(401, { message: "Unauthorized" })
-    }
-
-
-    return c.json({ success: true });
+    c.set("appointmentId", appointment.id)
+    await next()
 })
