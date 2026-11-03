@@ -33,6 +33,7 @@ app.post('/', async (c) => {
                 const session = event.data.object;
 
                 if (session.payment_status === 'paid') {
+
                     await handleCheckoutCompleted(session)
                 }
                 break;

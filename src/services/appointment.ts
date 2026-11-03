@@ -350,7 +350,6 @@ export async function changePaymentMethod({ customer, id, paymentMethod }: Chang
     return appointment;
 }
 
-
 export async function updateAppointment({ userId, id, data }: UpdateAppointmentParams) {
 
     const appointment = await db.update(appointments)

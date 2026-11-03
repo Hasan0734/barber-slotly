@@ -96,12 +96,15 @@ export async function handleCheckoutCompleted(session: Stripe.Checkout.Session) 
         await tx
             .update(appointments)
             .set({
-                paymentStatus: 'paid'
+                paymentStatus: 'paid',
+                status: "confirmed",
+                reservationExpiresAt: null
             })
             .where(
                 and(
                     eq(appointments.id, payment.appointmentId),
-                    eq(appointments.paymentStatus, "pending")
+                    eq(appointments.paymentStatus, "pending"),
+                    eq(appointments.status, "pending"),
                 )
             );
 

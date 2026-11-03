@@ -11,6 +11,9 @@ type CreateCheckoutSessionInput = {
     paymentId: string
 };
 
+
+const expiresAt = Math.floor(Date.now() / 1000) + 30 * 60;
+
 export async function createCheckoutSession({ appointmentId, serviceName, servicePrice, paymentId }: CreateCheckoutSessionInput) {
     const session = await stripe.checkout.sessions.create({
         mode: 'payment',
@@ -32,12 +35,13 @@ export async function createCheckoutSession({ appointmentId, serviceName, servic
             paymentId
         },
         success_url: `${env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${env.APP_URL}/cancel`
+        cancel_url: `${env.APP_URL}/cancel`,
+        expires_at: expiresAt
     },
         {
-            idempotencyKey: `checkout-${paymentId}`
+            idempotencyKey: `checkout-${appointmentId}`
         }
     )
-    
+
     return session;
 }
