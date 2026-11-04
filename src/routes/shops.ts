@@ -3,17 +3,13 @@ import { validate } from "../lib/validate.js";
 import { authGuard } from "../middleware/auth-guard.js";
 import db from "../db/index.js";
 import { shops } from "../db/schema/shops.js";
-import { and, eq, or } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { shopSchema, updateShopSchema } from "../schemas/shop.js";
 import { HTTPException } from "hono/http-exception";
 import { createAppointmentSchema } from "../schemas/appointment.js";
 import { availabilityQuerySchema } from "../schemas/availability.js";
 import { getAvailableSlots } from "../services/availability.js";
 import { createAppointment } from "../services/appointment.js";
-import { createPayment } from "../services/payment.js";
-import { createCheckoutSession } from "../stripe.js";
-import { payments } from "../db/schema/payments.js";
-import { setCookie } from "hono/cookie";
 import { resolveCustomerSession } from "../middleware/resolve-customer-session.js";
 
 const app = new Hono();
@@ -110,29 +106,8 @@ app.post('/:slug/appointments', resolveCustomerSession, validate('json', createA
         shopSlug,
         ...ownership
     })
-    // const payment = await createPayment({
-    //     appointmentId: appointment.id,
-    //     servicePrice: appointment.servicePrice
-    // });
 
-    // if (!appointment || !payment) {
-    //     throw new HTTPException(400, { message: "Something went wrong" })
-    // }
     const { bookingToken, ...rest } = appointment;
-
-    // setCookie(c, "slotly_booking_token", bookingToken, {
-    //     httpOnly: true,
-    //     secure: process.env.NODE_ENV === "production",
-    //     sameSite: "None",
-    //     path: '/',
-    //     maxAge: 60 * 60 * 24 * 30,
-    // })
-
-
-    // await db.update(payments)
-    //     .set({ providerSessionId: session.id })
-    //     .where(eq(payments.id, payment.id));
-
     return c.json({
         success: true,
         message: "Appointment created successfully",
@@ -140,19 +115,6 @@ app.post('/:slug/appointments', resolveCustomerSession, validate('json', createA
     }, 201);
 })
 
-
-
-// const session = await createCheckoutSession({
-//     appointmentId: appointment.id,
-//     serviceName: appointment.serviceName,
-//     servicePrice: appointment.servicePrice,
-//     paymentId: payment.id
-// });
-
-
-// if (!session) {
-//     throw new HTTPException(400, { message: "Payment failed" })
-// }
 
 // check avaibility
 app.get("/:slug/availability", validate('query', availabilityQuerySchema), async (c) => {

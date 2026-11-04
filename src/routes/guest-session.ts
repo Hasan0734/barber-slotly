@@ -2,11 +2,10 @@ import { Hono } from "hono";
 import { authGuard } from "../middleware/auth-guard.js";
 import { deleteCookie, getCookie } from "hono/cookie";
 import { validateAuth } from "../middleware/validateAuth.js";
-import { claimGuestSessionService } from "../services/guest-session.js";
+import { claimGuestSessionService, revokeGuestSessionService } from "../services/guest-session.js";
 import { HTTPException } from "hono/http-exception";
 
 const app = new Hono();
-
 
 app.post('/claim', authGuard, validateAuth, async (c) => {
     const user = c.get('user');
@@ -33,6 +32,30 @@ app.post('/claim', authGuard, validateAuth, async (c) => {
 })
 
 app.post('/revoke', async (c) => {
+
+    const guestToken = getCookie(c, "slotly_guest_session");
+
+    if (!guestToken) {
+        deleteCookie(c, "slotly_guest_session", {
+            path: "/",
+        });
+
+        return c.json({
+            message: "Guest session revoked",
+        });
+    }
+
+    await revokeGuestSessionService(guestToken);
+
+    deleteCookie(c, "slotly_guest_session", {
+        path: "/",
+    });
+
+    return c.json({
+        success: true,
+        message: "Guest session revoked successfully",
+    });
+
 
 })
 

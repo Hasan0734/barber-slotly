@@ -139,3 +139,24 @@ export async function claimGuestSessionService({
         }
     })
 }
+
+export async function revokeGuestSessionService(token: string) {
+    const tokenHash = generateTokenHash(token);
+
+    const [guestSession] = await db
+        .update(guestSessions)
+        .set({ revokedAt: new Date() })
+        .where(
+            and(
+                eq(guestSessions.tokenHash, tokenHash),
+                isNull(guestSessions.revokedAt),
+                isNull(guestSessions.claimedAt)
+            )
+        )
+        .returning({
+            id: guestSessions.id,
+        });
+
+    return guestSession;
+
+}
