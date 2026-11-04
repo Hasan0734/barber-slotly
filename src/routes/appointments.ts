@@ -8,12 +8,14 @@ import {
     switchPaymentMethod
 } from "../schemas/appointment.js";
 import {
+    cancelAppointment,
     changeAppointmentStatus,
     changePaymentMethod,
-    getAppointment,
+    getOwnerAppointment,
     getCustomerAppointments,
     getOwnerAppointments,
-    updateAppointment
+    updateAppointment,
+    getAppointment
 } from "../services/appointment.js";
 import { validateAuth } from "../middleware/validateAuth.js";
 
@@ -80,10 +82,18 @@ app.get('/', validateAuth, validate('query', appointmentQuerySchema), async (c) 
         }
     }, 200)
 })
-app.get('/:id', authGuard, async (c) => {
+
+app.get('/:id', validateAuth, async (c) => {
+    const customer = c.get('customer')
+    const id = c.req.param('id');
+    const appointment = await getAppointment(id, customer)
+    return c.json({ success: true, data: appointment }, 200)
+})
+
+app.get('/:id/owner', authGuard, async (c) => {
     const user = c.get('user');
     const id = c.req.param('id');
-    const appointment = getAppointment(id, user.id)
+    const appointment = getOwnerAppointment(id, user.id)
     return c.json({ success: true, data: appointment }, 200)
 })
 
@@ -106,8 +116,15 @@ app.patch("/:id/payment-method", validateAuth, validate('json', switchPaymentMet
 
 app.patch("/:id/cancel", validateAuth, async (c) => {
     const customer = c.get('customer');
+    const id = c.req.param('id');
+    const body = await c.req.json();
 
 
+    await cancelAppointment({
+        id,
+        customer,
+        reason: body.reason
+    })
 
     return c.json({
         message: "Appointment cancelled.",

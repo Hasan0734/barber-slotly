@@ -14,6 +14,7 @@ import type {
     GetAppointmentsParams,
     UpdateAppointmentParams
 } from "../types/appointment.js";
+import type { BookingCustomer } from "../middleware/validateAuth.js";
 
 
 
@@ -281,7 +282,7 @@ export async function getCustomerAppointments({
     }
 }
 
-export async function getAppointment(id: string, userId: string) {
+export async function getOwnerAppointment(id: string, userId: string) {
 
     const [appointment] = await db.select({
         ...getTableColumns(appointments),
@@ -303,6 +304,33 @@ export async function getAppointment(id: string, userId: string) {
     if (!appointment) {
         throw new HTTPException(404, { message: "Appointment not found" })
     }
+}
+export async function getAppointment(id: string, customer: BookingCustomer) {
+    const customerConditions = customer?.type === "registered"
+        ? and(
+            eq(appointments.customerId, customer.customerId),
+            eq(appointments.id, id)
+        )
+        : and(
+            eq(appointments.id, id),
+            eq(appointments.guestSessionId, customer?.guestSessionId as string),
+            isNull(appointments.customerId)
+        )
+
+
+    const [appointment] = await db.select()
+        .from(appointments)
+        .where(customerConditions)
+        .limit(1);
+
+        
+    if (!appointment) {
+        throw new HTTPException(404, {
+            message: "Appointment not found"
+        })
+    }
+
+    return appointment;
 }
 
 export async function changePaymentMethod({ customer, id, paymentMethod }: ChangePaymentMethodParams) {

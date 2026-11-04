@@ -42,7 +42,7 @@ api.route('/appointments', appointments);
 api.route('/payments', payments);
 api.route('/webhooks/stripe', webhooks);
 api.route('/checkout', checkout);
-api.route('guest-sessions/claim', guestSessions)
+api.route('/guest-sessions', guestSessions)
 
 
 app.route('/', api);

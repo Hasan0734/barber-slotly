@@ -9,11 +9,9 @@ const app = new Hono();
 
 
 app.post('/claim', authGuard, validateAuth, async (c) => {
-
     const user = c.get('user');
 
     const guestToken = getCookie(c, "slotly_guest_session");
-
     if (!guestToken) {
         throw new HTTPException(401, {
             message: "Guest session not found",
@@ -26,11 +24,10 @@ app.post('/claim', authGuard, validateAuth, async (c) => {
         path: '/'
     });
 
-
     return c.json({
         success: true,
         message: "Guest appointments claimed successfully",
-        claimedAppointments: result.claimedCount,
+        // claimedAppointments: result.claimedCount,
     })
 
 })
