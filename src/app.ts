@@ -9,7 +9,6 @@ import { secureHeaders } from 'hono/secure-headers';
 import shops from './routes/shops.js'
 import services from './routes/services.js'
 import businessHours from './routes/businessHours.js';
-import availability from './routes/availability.js';
 import appointments from './routes/appointments.js';
 import payments from './routes/payments.js';
 import webhooks from './routes/webhooks.js';
@@ -37,7 +36,6 @@ app.all('/api/auth/*', (c) => auth.handler(c.req.raw));
 api.route('/shops', shops);
 api.route('/services', services);
 api.route('/business-hours', businessHours);
-api.route('/availability', availability);
 api.route('/appointments', appointments);
 api.route('/payments', payments);
 api.route('/webhooks/stripe', webhooks);

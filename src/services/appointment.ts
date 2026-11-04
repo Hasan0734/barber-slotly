@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, getTableColumns, ilike, inArray, isNull, or, SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, ilike, inArray, isNotNull, isNull, lte, or, SQL } from "drizzle-orm";
 import db from "../db/index.js";
 import { shops } from "../db/schema/shops.js";
 import { HTTPException } from "hono/http-exception";
@@ -15,6 +15,8 @@ import type {
     UpdateAppointmentParams
 } from "../types/appointment.js";
 import type { BookingCustomer } from "../middleware/validateAuth.js";
+import { payments } from "../db/schema/payments.js";
+import { stripe } from "../stripe.js";
 
 
 
@@ -47,6 +49,7 @@ export async function createAppointment(data: CreateAppointmentParams) {
                 eq(services.isActive, true)
             )
         );
+
 
     if (!service) {
         throw new HTTPException(404, { message: "Service not found or unavailable" })
@@ -85,6 +88,7 @@ export async function createAppointment(data: CreateAppointmentParams) {
             message: "This appointment slot is no longer available"
         })
     }
+
     const bookingToken = randomBytes(32).toString('hex');
     // 4. Prepare appointment data
     const appointmentData = {
@@ -112,6 +116,7 @@ export async function createAppointment(data: CreateAppointmentParams) {
             .insert(appointments)
             .values(appointmentData)
             .returning();
+
 
         return {
             ...appointment,
@@ -323,7 +328,7 @@ export async function getAppointment(id: string, customer: BookingCustomer) {
         .where(customerConditions)
         .limit(1);
 
-        
+
     if (!appointment) {
         throw new HTTPException(404, {
             message: "Appointment not found"
@@ -462,4 +467,76 @@ export async function cancelAppointment({ id, customer, reason }: CancelAppointm
 
     return appointment;
 
+}
+
+
+export async function cleanupExpiredReservations() {
+    const now = new Date();
+
+    const expiredReservations = await db
+        .select({
+            appointmentId: appointments.id,
+            paymentId: payments.id,
+            sessionId: payments.providerSessionId,
+        })
+        .from(appointments)
+        .innerJoin(payments, eq(payments.appointmentId, appointments.id))
+        .where(
+            and(
+                eq(appointments.status, "pending"),
+                eq(appointments.paymentMethod, "online"),
+                eq(appointments.paymentStatus, "pending"),
+                lte(appointments.reservationExpiresAt, now),
+                eq(payments.status, 'pending'),
+                isNotNull(payments.providerSessionId)
+            )
+        );
+
+    for (const reservation of expiredReservations) {
+        if (!reservation.sessionId) return;
+
+        const session = await stripe.checkout.sessions.retrieve(reservation.sessionId);
+
+        if (session.status !== 'expired') {
+            continue;
+        }
+        if (session.payment_status !== "paid") {
+            continue;
+        }
+
+        await db.transaction(async (tx) => {
+            const [updatedAppointment] = await tx
+                .update(appointments)
+                .set({
+                    paymentStatus: 'failed',
+                    reservationExpiresAt: null,
+                    updatedAt: new Date()
+                })
+                .where(
+                    and(
+                        eq(appointments.id, reservation.appointmentId),
+                        eq(appointments.status, 'pending'),
+                        eq(appointments.paymentStatus, 'pending'),
+                        lte(appointments.reservationExpiresAt, new Date())
+                    )
+                )
+                .returning({
+                    id: appointments.id
+                });
+
+            if (!updatedAppointment) return;
+
+            await tx.update(payments)
+                .set({
+                    status: 'failed',
+                    updatedAt: new Date()
+                })
+                .where(
+                    and(
+                        eq(payments.id, reservation.paymentId),
+                        eq(payments.status, 'pending')
+                    )
+                )
+        })
+    }
 }

@@ -89,7 +89,6 @@ app.post('/:slug/appointments', resolveCustomerSession, validate('json', createA
     const shopSlug = c.req.param('slug');
     const customer = c.get('customer');
 
-
     const ownership =
         customer.type === "registered"
             ? {
@@ -105,7 +104,8 @@ app.post('/:slug/appointments', resolveCustomerSession, validate('json', createA
         ...body,
         shopSlug,
         ...ownership
-    })
+    });
+
 
     const { bookingToken, ...rest } = appointment;
     return c.json({

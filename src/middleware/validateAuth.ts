@@ -38,7 +38,7 @@ export const validateAuth = createMiddleware<BookingValidateVariables>(async (c,
             customerId: session.user.id,
         });
 
-        return next();
+        return await next();
     }
 
     const guestToken = getCookie(c, "slotly_guest_session");

@@ -8,6 +8,10 @@ import { guestSessions } from "../db/schema/guest-sessions.js";
 import { HTTPException } from "hono/http-exception";
 import { appointments } from "../db/schema/appointments.js";
 
+type ClaimGuestSessionParams = {
+    guestToken: string;
+    userId: string;
+};
 
 export async function createGuestSession() {
     const token = randomBytes(32).toString('hex');
@@ -79,11 +83,6 @@ export async function getOrCreateGuestSession(c: Context) {
         token: sessionToken
     }
 }
-
-type ClaimGuestSessionParams = {
-    guestToken: string;
-    userId: string;
-};
 
 export async function claimGuestSessionService({
     guestToken,

@@ -26,6 +26,9 @@ importers:
       hono:
         specifier: ^4.13.14
         version: 4.13.14
+      node-cron:
+        specifier: ^4.6.0
+        version: 4.6.0
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -42,6 +45,9 @@ importers:
       '@types/node':
         specifier: ^26.1.1
         version: 26.6.6
+      '@types/node-cron':
+        specifier: ^3.0.11
+        version: 3.0.11
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
@@ -311,6 +317,9 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@types/node-cron@3.0.11':
+    resolution: {integrity: sha512-0ikrnug3/IyneSHqCBeslAhlK2aBfYek1fGo4bP4QnZPmiqSGRK+Oy7ZMisLWkesffJvQ1cqAcBnJC+8+nxIAg==}
 
   '@types/node@26.6.6':
     resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
@@ -705,6 +714,10 @@ packages:
     resolution: {integrity: sha512-FixtE239Gl6Gz0ZGCK0WzvNwObNCIwVT+L7zQcf1QgcA6AzBxblzqe9OT88qiucNkhsjSOqiogSaF5jVbJiqSA==}
     engines: {node: ^20.0.0 || >=22.0.0}
 
+  node-cron@4.6.0:
+    resolution: {integrity: sha512-Si/bzYiKRHOB8/a99T2+SDGN582ONDMSTlJr5oCkT6GtnqPjZ2s10eoQRYkW9ZHwjVxONL+W8Fb+qR0AHMQsdg==}
+    engines: {node: '>=20'}
+
   pg-cloudflare@1.4.1:
     resolution: {integrity: sha512-6PQbsFWZcp9EmJEwy5cGQ2La+AMWpP46lgbb8X+U/XsHIUweYDNCpeuKck5RxL2MdVFi7krbbEi5nX4Zh7JhrQ==}
 
@@ -945,6 +958,8 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
+  '@types/node-cron@3.0.11': {}
+
   '@types/node@26.6.6':
     dependencies:
       undici-types: 8.9.0
@@ -1108,6 +1123,8 @@ snapshots:
   kysely@0.29.7: {}
 
   nanostores@1.5.5: {}
+
+  node-cron@4.6.0: {}
 
   pg-cloudflare@1.4.1:
     optional: true

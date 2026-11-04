@@ -33,9 +33,11 @@ export const resolveCustomerSession = createMiddleware<AuthVariables>(async (c, 
             type: "registered",
             customerId: session.user.id
         })
+        return await next();
 
-        await next();
     }
+
+    console.log("session not available")
 
     const guestSession = await getOrCreateGuestSession(c);
 

@@ -13,6 +13,7 @@
     "date-fns-tz": "^3.2.0",
     "drizzle-orm": "1.0.0-rc.5",
     "hono": "^4.13.14",
+    "node-cron": "^4.6.0",
     "pg": "^8.23.1",
     "postgres": "^4.0.0",
     "stripe": "^23.1.0",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
+    "@types/node-cron": "^3.0.11",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "1.0.0-rc.5",
     "tsx": "^4.23.0",

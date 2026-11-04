@@ -12,7 +12,7 @@ type CreateCheckoutSessionInput = {
 };
 
 
-const expiresAt = Math.floor(Date.now() / 1000) + 30 * 60;
+const expiresAt = Math.floor(Date.now() / 1000) + (30 * 60);
 
 export async function createCheckoutSession({ appointmentId, serviceName, servicePrice, paymentId }: CreateCheckoutSessionInput) {
     const session = await stripe.checkout.sessions.create({
