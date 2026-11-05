@@ -124,7 +124,6 @@ export async function getAvailableSlots({
             )
         );
 
-    console.log(existingAppointments)
 
     const openingMinutes = timeToMinutes(openTime);
     const closingMinutes = timeToMinutes(closeTime);

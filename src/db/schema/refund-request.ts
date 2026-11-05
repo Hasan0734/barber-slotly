@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { check, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { appointments } from "./appointments.js";
 import { payments } from "./payments.js";
 import { sql } from "drizzle-orm";
@@ -42,5 +42,9 @@ export const refundRequests = pgTable("refund_requests", {
 }, (table) => [
     uniqueIndex("refund_requests_one_active_per_payment")
         .on(table.paymentId)
-        .where(sql`${table.status} IN ('pending', 'processing')`)
+        .where(sql`${table.status} IN ('pending', 'processing')`),
+    check(
+        "refund_requests_amount_positive",
+        sql`${table.amount} > 0`
+    )
 ])

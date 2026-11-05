@@ -14,6 +14,7 @@ import payments from './routes/payments.js';
 import webhooks from './routes/webhooks.js';
 import checkout from './routes/checkout.js';
 import guestSessions from './routes/guest-session.js'
+import refundRequests from './routes/refund-requests.js'
 
 
 const app = new Hono();
@@ -41,6 +42,7 @@ api.route('/payments', payments);
 api.route('/webhooks/stripe', webhooks);
 api.route('/checkout', checkout);
 api.route('/guest-sessions', guestSessions)
+api.route('/refund-requests', refundRequests)
 
 
 app.route('/', api);

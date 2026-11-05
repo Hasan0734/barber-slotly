@@ -17,6 +17,7 @@ import type {
 import type { BookingCustomer } from "../middleware/validateAuth.js";
 import { payments } from "../db/schema/payments.js";
 import { stripe } from "../stripe.js";
+import { refundRequests } from "../db/schema/refund-request.js";
 
 
 
@@ -418,58 +419,106 @@ export async function updateAppointment({ userId, id, data }: UpdateAppointmentP
 export async function cancelAppointment({ id, customer, reason }: CancelAppointmentParams) {
     const condition = customer?.type === "registered"
         ? and(
-            eq(appointments.id, id),
             eq(appointments.customerId, customer.customerId)
         )
         : and(
-            eq(appointments.id, id),
             eq(appointments.guestSessionId, customer?.guestSessionId!),
             isNull(appointments.customerId)
         );
 
-    const [appointment] = await db
-        .select()
-        .from(appointments)
-        .where(condition)
-        .limit(1);
 
-    if (!appointment) {
-        throw new HTTPException(404, {
-            message: "Appointment not found",
-        })
-    }
+    await db.transaction(async (tx) => {
 
-    if (!["pending", "confirmed"].includes(appointment.status)) {
-        throw new HTTPException(400, {
-            message: "This appointment cannot be cancelled"
-        })
-    }
-    const [cancelledAppointment] = await db
-        .update(appointments)
-        .set({
-            status: "cancelled",
-            cancelledAt: new Date(),
-            cancelledBy: "customer",
-            cancellationReason: reason ?? null,
-            updatedAt: new Date()
-        })
-        .where(
-            and(
-                eq(appointments.id, id),
-                inArray(appointments.status, [
-                    "pending", "confirmed"
-                ])
+        const [appointment] = await db
+            .select()
+            .from(appointments)
+            .where(
+                and(
+                    eq(appointments.id, id),
+                    condition
+                )
             )
-        )
-        .returning();
+            .for("update")
+            .limit(1);
 
-    if (!cancelledAppointment) {
-        throw new HTTPException(409, {
-            message: "Appointment has already been updated"
-        })
-    }
+        if (!appointment) {
+            throw new HTTPException(404, {
+                message: "Appointment not found",
+            })
+        }
 
-    return appointment;
+        if (!["pending", "confirmed"].includes(appointment.status)) {
+            throw new HTTPException(400, {
+                message: "This appointment cannot be cancelled"
+            })
+        }
+
+        const [cancelledAppointment] = await tx
+            .update(appointments)
+            .set({
+                status: "cancelled",
+                cancelledAt: new Date(),
+                cancelledBy: "customer",
+                cancellationReason: reason ?? null,
+                updatedAt: new Date()
+            })
+            .where(
+                and(
+                    eq(appointments.id, id),
+                    condition,
+                    inArray(appointments.status, [
+                        "pending", "confirmed"
+                    ])
+                )
+            )
+            .returning();
+
+        if (!cancelledAppointment) {
+            throw new HTTPException(409, {
+                message: "Appointment has already been updated"
+            })
+        }
+
+        if (cancelledAppointment.paymentStatus === 'paid') {
+            const [payment] = await tx
+                .select()
+                .from(payments)
+                .where(
+                    and(
+                        eq(payments.appointmentId, id),
+                        eq(payments.status, 'succeeded')
+                    )
+                )
+                .limit(1);
+
+            if (!payment) {
+                throw new HTTPException(409, { message: "Successful payment record not found" })
+            };
+
+            const [refundRequest] = await tx
+                .insert(refundRequests)
+                .values({
+                    appointmentId: id,
+                    paymentId: payment.id,
+                    requestedBy: customer?.type === 'registered'
+                        ? customer.customerId
+                        : null,
+                    amount: payment.amount,
+                    currency: payment.currency,
+                    reason: reason ?? null,
+                    status: 'pending'
+
+                })
+                .returning();
+
+            return { cancelledAppointment, refundRequest }
+        }
+        return {
+            cancelledAppointment,
+            refundRequest: null
+        }
+    })
+
 
 }
 
