@@ -94,7 +94,6 @@ export async function createAppointment(data: CreateAppointmentParams) {
     const appointmentData = {
         shopId: shop.id,
         serviceId: service.id,
-
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         customerEmail: data.customerEmail ?? null,
@@ -106,8 +105,9 @@ export async function createAppointment(data: CreateAppointmentParams) {
         serviceDuration: service.durationMinutes,
         startAt,
         endAt,
-
-
+        reservationExpiresAt: new Date(
+            Date.now() + 5 * 60 * 1000
+        )
     };
 
     // 6. Create appointment
@@ -309,7 +309,11 @@ export async function getOwnerAppointment(id: string, userId: string) {
     if (!appointment) {
         throw new HTTPException(404, { message: "Appointment not found" })
     }
+
+    return appointment;
+
 }
+
 export async function getAppointment(id: string, customer: BookingCustomer) {
     const customerConditions = customer?.type === "registered"
         ? and(
@@ -468,7 +472,6 @@ export async function cancelAppointment({ id, customer, reason }: CancelAppointm
     return appointment;
 
 }
-
 
 export async function cleanupExpiredReservations() {
     const now = new Date();

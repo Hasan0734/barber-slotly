@@ -18,6 +18,7 @@ import {
     getAppointment
 } from "../services/appointment.js";
 import { validateAuth } from "../middleware/validateAuth.js";
+import { HTTPException } from "hono/http-exception";
 
 const app = new Hono();
 
@@ -83,17 +84,19 @@ app.get('/', validateAuth, validate('query', appointmentQuerySchema), async (c) 
     }, 200)
 })
 
-app.get('/:id', validateAuth, async (c) => {
-    const customer = c.get('customer')
-    const id = c.req.param('id');
-    const appointment = await getAppointment(id, customer)
-    return c.json({ success: true, data: appointment }, 200)
-})
+
 
 app.get('/:id/owner', authGuard, async (c) => {
     const user = c.get('user');
     const id = c.req.param('id');
-    const appointment = getOwnerAppointment(id, user.id)
+    const appointment = await getOwnerAppointment(id, user.id);
+    return c.json({ success: true, data: appointment }, 200)
+})
+
+app.get('/:id', validateAuth, async (c) => {
+    const customer = c.get('customer')
+    const id = c.req.param('id');
+    const appointment = await getAppointment(id, customer)
     return c.json({ success: true, data: appointment }, 200)
 })
 

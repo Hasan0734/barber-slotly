@@ -5,8 +5,7 @@ import { startAppointmentCleanupJob } from './jobs/appointment-cleanup.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
 
-
-// startAppointmentCleanupJob();
+startAppointmentCleanupJob();
 
 serve({
   fetch: app.fetch,

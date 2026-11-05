@@ -89,6 +89,7 @@ export async function getAvailableSlots({
     const dayStart = fromZonedTime(`${date}T00:00:00`, timezone);
     const dayEnd = fromZonedTime(`${nextDate}T00:00:00`, timezone);
 
+
     const existingAppointments = await db
         .select({
             startAt: appointments.startAt,
@@ -105,15 +106,25 @@ export async function getAvailableSlots({
                     eq(appointments.status, "confirmed"),
                     and(
                         eq(appointments.status, "pending"),
-                        isNull(appointments.reservationExpiresAt)
+                        eq(appointments.paymentMethod, "pay_at_shop")
+
                     ),
                     and(
                         eq(appointments.status, "pending"),
+                        isNull(appointments.paymentMethod),
+                        gt(appointments.reservationExpiresAt, nowTime)
+                    ),
+                    and(
+                        eq(appointments.status, "pending"),
+                        eq(appointments.paymentMethod, "online"),
+                        eq(appointments.paymentStatus, "pending"),
                         gt(appointments.reservationExpiresAt, nowTime)
                     )
                 )
             )
         );
+
+    console.log(existingAppointments)
 
     const openingMinutes = timeToMinutes(openTime);
     const closingMinutes = timeToMinutes(closeTime);
@@ -121,7 +132,9 @@ export async function getAvailableSlots({
     const availableSlots = [];
     const now = new Date();
 
-    for (let startMinutes = openingMinutes; startMinutes + service.durationMinutes <= closingMinutes; startMinutes += SLOT_INTERVAL_MINUTES) {
+    for (let startMinutes = openingMinutes;
+        startMinutes + service.durationMinutes <= closingMinutes;
+        startMinutes += SLOT_INTERVAL_MINUTES) {
 
         const hour = Math.floor(startMinutes / 60);
         const minute = startMinutes % 60;
