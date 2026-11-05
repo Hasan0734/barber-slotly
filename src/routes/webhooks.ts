@@ -48,6 +48,9 @@ app.post('/', async (c) => {
                 await handleCheckoutExpired(session)
                 break;
             }
+            case "charge.refunded": {
+                const session = event.data.object;
+            }
         }
 
         return c.text('ok', 200)

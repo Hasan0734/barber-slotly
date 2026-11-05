@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
 import db from "../db/index.js";
@@ -101,7 +101,6 @@ export async function getAvailableSlots({
                 eq(appointments.shopId, shop.id),
                 lt(appointments.startAt, dayEnd),
                 gt(appointments.endAt, dayStart),
-
                 or(
                     eq(appointments.status, "confirmed"),
                     and(

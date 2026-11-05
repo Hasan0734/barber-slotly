@@ -12,7 +12,8 @@ type CreateCheckoutSessionInput = {
 };
 
 
-const expiresAt = Math.floor(Date.now() / 1000) + (32 * 60);
+const thirtyFiveMinutes = 35 * 60;
+const expiresAtSeconds = Math.floor(Date.now() / 1000) + thirtyFiveMinutes;
 
 export async function createCheckoutSession({ appointmentId, serviceName, servicePrice, paymentId }: CreateCheckoutSessionInput) {
     const session = await stripe.checkout.sessions.create({
@@ -36,7 +37,7 @@ export async function createCheckoutSession({ appointmentId, serviceName, servic
         },
         success_url: `${env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${env.APP_URL}/cancel`,
-        expires_at: expiresAt
+        expires_at: expiresAtSeconds
     },
         {
             idempotencyKey: `checkout-${appointmentId}-${paymentId}`
@@ -44,4 +45,21 @@ export async function createCheckoutSession({ appointmentId, serviceName, servic
     )
 
     return session;
+}
+
+export async function refundStripe(paymentIntent: string, amount: number, refundRequestId: string) {
+
+    const result = await stripe.refunds.create({
+        payment_intent: paymentIntent,
+        amount,
+        metadata: {
+            refundRequestId,
+        },
+    },
+        {
+            idempotencyKey: `refund-${refundRequestId}`
+        }
+    );
+
+    return result;
 }

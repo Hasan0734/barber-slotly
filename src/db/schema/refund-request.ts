@@ -22,6 +22,7 @@ export const refundRequests = pgTable("refund_requests", {
     amount: integer("amount").notNull(),
     currency: varchar("currency", { length: 3 }).notNull(),
     reason: text("reason"),
+
     status: refundRequestStatusEnum()
         .notNull()
         .default("pending"),
