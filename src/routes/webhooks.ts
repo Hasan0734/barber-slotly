@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { stripe } from "../stripe.js";
 import { env } from "../env.js";
 import { handleCheckoutCompleted, handleCheckoutExpired, handlePaymentFailed } from "../services/payment.js";
+import { handleRefundWebhook } from "../services/refund-request.js";
 
 const app = new Hono();
 
@@ -48,8 +49,10 @@ app.post('/', async (c) => {
                 await handleCheckoutExpired(session)
                 break;
             }
-            case "charge.refunded": {
-                const session = event.data.object;
+            case "refund.updated": {
+                const session = event.data.object as Stripe.Refund;
+                await handleRefundWebhook(session)
+                break;
             }
         }
 

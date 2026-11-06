@@ -7,6 +7,7 @@ import { appointments } from "../db/schema/appointments.js";
 import { payments } from "../db/schema/payments.js";
 import { shops } from "../db/schema/shops.js";
 import { refundStripe } from "../stripe.js";
+import type Stripe from "stripe";
 
 export async function getRefundReqeusts(customer: BookingCustomer) {
 
@@ -282,6 +283,9 @@ export async function refundApprovedByOwner(ownerId: string, id: string) {
 
     const refund = await refundStripe(request.payment.providerPaymentIntentId!, request.refundRequest.amount, id);
 
+    if (!refund) {
+        return null;
+    }
     await db
         .update(refundRequests)
         .set({
@@ -291,4 +295,120 @@ export async function refundApprovedByOwner(ownerId: string, id: string) {
         .where(
             eq(refundRequests.id, id)
         )
+}
+
+export async function handleRefundWebhook(refund: Stripe.Refund) {
+    const refundRequestId = refund.metadata?.refundRequestId;
+
+    if (!refundRequestId) {
+        throw new Error("Refund request ID missing from stripe metadata")
+    }
+
+    const paymentIntentId =
+        typeof refund.payment_intent === "string"
+            ? refund.payment_intent
+            : refund.payment_intent?.id;
+
+    if (!paymentIntentId) {
+        throw new Error("PaymentIntent ID missing from refund");
+    }
+
+    const refundStatus = refund.status === "succeeded"
+        ? "succeeded"
+        : refund.status === "failed"
+            || refund.status === "canceled"
+            ? "failed"
+            : "processing"
+
+
+
+    return await db.transaction(async (tx) => {
+
+        const [request] = await tx
+            .select()
+            .from(refundRequests)
+            .where(
+                eq(refundRequests.id, refundRequestId)
+            )
+            .for('update')
+            .limit(1)
+
+        if (!request) {
+            throw new Error("Refund request not found")
+        }
+
+        if (request.status === "succeeded" ||
+            request.status === "failed" ||
+            request.status === "rejected") {
+            return request;
+        }
+
+        if (request.status !== "processing") {
+            throw new Error("Refund request is not processing");
+        }
+
+        const [payment] = await tx
+            .select()
+            .from(payments)
+            .where(eq(payments.id, request.paymentId))
+            .limit(1);
+
+        if (!payment) {
+            throw new Error("Payment not found")
+        }
+
+
+        if (payment.providerPaymentIntentId !== paymentIntentId) {
+            throw new Error("PaymentIntent ID mismatch")
+        }
+
+
+        if (refund.amount !== request.amount
+            || refund.currency.toLowerCase()
+            !== request.currency.toLowerCase()) {
+            throw new Error("Refund amount or currency mismatch")
+        }
+
+        if (request.providerRefundId && request.providerRefundId !== refund.id) {
+            throw new Error("Stripe Refund ID mismatch")
+        }
+
+
+        const [updatedRequest] = await tx
+            .update(refundRequests)
+            .set({
+                status: refundStatus,
+                providerRefundId: refund.id,
+                updatedAt: new Date()
+            })
+            .where(
+                eq(refundRequests.id, refundRequestId),
+            )
+            .returning();
+
+        if (!updatedRequest) {
+            throw new Error("Failed to update refund request")
+        }
+        if (refundStatus === "succeeded") {
+            await tx
+                .update(payments)
+                .set({
+                    status: 'refunded',
+                    updatedAt: new Date()
+                })
+                .where(
+                    eq(payments.id, payment.id)
+                );
+            await tx
+                .update(appointments)
+                .set({
+                    paymentStatus: 'refunded'
+                })
+                .where(
+                    eq(appointments.id, request.appointmentId)
+                )
+        }
+
+        return   updatedRequest;
+    })
 }
